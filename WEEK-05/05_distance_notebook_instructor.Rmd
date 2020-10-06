@@ -1,0 +1,365 @@
+---
+title: 'R Notebook sandbox: Playing with Distance'
+output:
+  html_document:
+    df_print: paged
+    toc: true
+    toc_float: true
+    toc_depth: 4
+    fig_caption: true
+    number_sections: true
+my-var: "monte"  # https://bookdown.org/yihui/rmarkdown/html-document.html
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE);
+knitr::opts_chunk$set(warning = FALSE);
+knitr::opts_chunk$set(message = FALSE);
+```
+
+
+# Distance
+
+![**Source: https://i.stack.imgur.com/Vrq80.png**](http://md5.mshaffer.com/WSU_STATS419/_images_/Vrq80.png)
+
+*vs* pure HTML:
+
+
+<IMG src="http://md5.mshaffer.com/WSU_STATS419/_images_/Vrq80.png" style="border: 2px black solid;" />
+<div>**Source: https://i.stack.imgur.com/Vrq80.png**</div>
+
+- note: It seems currently, you can't nest a IMG inside a div, the renderer (Knitter) breaks.
+- note: It seems you can't nest bold and italics, and where is the 'underline'?
+
+***
+
+To compare two or more things, the concept of distance is essential.  So let's make certain we understand what it's all about.
+
+![Source: https://en.wikipedia.org/wiki/Distance](http://md5.mshaffer.com/WSU_STATS419/_images_/2020-09-17_21-04-17.png)
+
+## Manhattan Distance
+This metric assume you are constrainted to a grid of city streets or blocks.  You can't walk on the diagonal (the adage: **shortest distance** between two points, ...) because a large building is in the way.
+
+## Euclidean Distance
+This metric is based on the Pythagorean Theorem and attributed to Euclid.  Some evidence suggests that the Babylonians and Chinese had this knowledge much earlier.  Regardless, this is the 2-D "Flatland" variation of distance and can be applied to an n-D space.
+
+## Mahalanobis Distance
+This distance can be used to account for the density of the points to offset the Euclidean distance.  It is like "adding gravity to the equation".  If several points are clustered together, their interdependence can be considered when computing distance.
+
+See: \url{https://analyticsindiamag.com/understanding-mahalanobis-distance-and-its-use-cases/}
+
+## Crow-flies Distances
+We live on a spherical ellipsoid, so Euclidean Geometry is a bit limited.  The earth bulges at the equator as it spins, so there are several formulas to calculate distances.  An airplane flying from New York to Paris flies close to the North Pole to save distance on a Spherical Ellipsoid.
+
+Note:  The WIKIPEDIA screenshot above explains that shortest time-distance may not be shortest distance due to prevailing winds.
+
+
+# Chicago
+So let's start in the city of Chicago:
+
+```{r, chunck-dist-chicago}
+
+chicago.willis.latlong = c(41.8791064,-87.6353986);
+chicago.cloud.gate.latlong = c(41.8826213,-87.6234554);
+chicago.lincoln.zoo.latlong = c(41.9217771,-87.6355701);
+chicago.marriott.latlong = c(41.8920961,-87.6244929);
+chicago.searle.latlong = c(41.8966098,-87.6175966);
+
+chicago = as.data.frame( matrix( c(  chicago.willis.latlong,
+                        chicago.cloud.gate.latlong,
+                        chicago.lincoln.zoo.latlong,
+                        chicago.marriott.latlong,
+                        chicago.searle.latlong
+                      )
+                    ,ncol=2,byrow=TRUE) );
+  rownames(chicago) = c("Willis Tower", "Cloud Gate", "Lincoln Zoo", "Marriott", "Searle NW");
+  colnames(chicago) = c("latitude","longitude");
+
+chicago;
+
+
+dist(chicago, method="manhattan", diag=FALSE, upper=TRUE);
+
+# what does latitude, longitude mean?  
+# If the earth were a perfect sphere with radius 4000 miles,
+#  what would the factors be for latitude, longitude?
+
+# how many miles is 1 degree of latitude
+latitude.factor = 69;  # rough mile estimate  # 68.703 ?
+
+chicago$x.lat = chicago$latitude*latitude.factor;
+
+# how many miles is 1 degree of longitude
+longitude.factor = 54.6;  # rough mile estimate  
+
+chicago$y.lat = chicago$longitude*longitude.factor;
+
+chicago;
+
+dist(chicago[,3:4], method="manhattan", diag=FALSE, upper=TRUE);
+
+# so let's go to Google maps and check out walking distance 
+# It says about 0.9 miles
+
+# Other distances
+dist(chicago[,3:4], method="euclidean", diag=FALSE, upper=TRUE);
+dist(chicago[,3:4], method="maximum", diag=FALSE, upper=TRUE);
+dist(chicago[,3:4], method="minkowski", diag=FALSE, upper=TRUE);
+
+
+# same result, different package with more distance features
+library(philentropy); # install.packages("philentropy", dependencies=TRUE);
+
+distance(chicago[,3:4], method="euclidean", diag=FALSE, upper=TRUE);
+distance(chicago[,3:4], method="canberra", diag=FALSE, upper=TRUE);
+#distance(chicago[,3:4], method="minkowski", diag=FALSE, upper=TRUE);
+
+getDistMethods();  # lot's of methods, some with their own parameters ..
+
+##################################
+library(geosphere);  # install.packages("geosphere", dependencies=TRUE);
+
+# Haversine formula is robust "crow-flies"
+distm( chicago[,2:1], fun=distHaversine);  # form is "long,lat" so reverse 
+distm( chicago[,2:1], fun=distMeeus);  # form is "long,lat" so reverse 
+distm( chicago[,2:1], fun=distGeo);  # form is "long,lat" so reverse 
+
+# default unit is meters, so let's convert
+library(measurements); # install.packages("measurements", dependencies=TRUE);
+conv_unit(2.54, "cm", "inch");
+
+conv_unit(  distm( chicago[,2:1], fun=distHaversine),  "m", "mi"); # meters to miles
+conv_unit(  distm( chicago[,2:1], fun=distMeeus),  "m", "mi"); # meters to miles
+conv_unit(  distm( chicago[,2:1], fun=distGeo),  "m", "mi"); # meters to miles
+
+## that's cool, but this is the end-all "crow-flies" distance formula ... not manhattan
+### [+5 Easter] Can you get the accuracy of Haversine working with manhattan
+### See https://stackoverflow.com/questions/32923363/manhattan-distance-for-two-geolocations
+
+# actually, longitude is a function of latitude
+# https://gis.stackexchange.com/questions/142326/calculating-longitude-length-in-miles
+# 
+# deg2rad = function(degrees)
+#   {
+#    degrees * (pi/180);
+#   }
+# rad2deg = function(radians )
+#   {
+#   radians * (180/pi);
+#   }
+# 
+# computeLongitudeFromLatitude = function(latitude)  # in decimal degrees
+#   {
+#   1 / ( 69.172 * cos(deg2rad(latitude)) );  
+#   }
+# 
+# chicago$y.lat2 = computeLongitudeFromLatitude(chicago$latitude);
+# 
+# chicago;
+# 
+# dist(chicago[,3,5], method="manhattan", diag=FALSE, upper=TRUE);
+
+
+```
+
+# New York City area (e.g., Manhattan)
+So you do Manhattan:
+
+```{r, chunck-dist-nyc}
+nyc.timesquare.latlong = c(40.7578705,-73.9854185);
+nyc.bull.wallstreet.latlong = c(40.705575,-74.0134097);
+nyc.lincoln.center.latlong = c(40.772, -73.9847);
+nyc.macys.latlong = c(40.7510547,-73.9904135);
+nyc.broadway.latlong = c(40.7593527,-73.9870634);
+nyc.stpatricks.latlong = c(40.758611, -73.976389);
+nyc.best.pizza.latlong = c(40.6250931,-73.9616134);
+nyc.best.cupcakes.latlong = c(40.7301048,-74.0026878);
+nyc.saks.latlong = c(40.7582027,-73.9772205);
+
+nyc = as.data.frame( matrix( c(  nyc.timesquare.latlong,
+                        nyc.bull.wallstreet.latlong,
+                        nyc.lincoln.center.latlong,
+                        nyc.macys.latlong,
+                        nyc.broadway.latlong,
+                        nyc.stpatricks.latlong,
+                        nyc.best.pizza.latlong,
+                        nyc.best.cupcakes.latlong,
+                        nyc.saks.latlong
+                      )
+                    ,ncol=2,byrow=TRUE) );
+  rownames(nyc) = c("Times Square", "The Bull on WallStreet", "The Lincoln Center", "Macy's", "Broadway (Les Miserable)", "St. Patrick's", "Di Fara Pizza", "Molly's Cupcakes", "Saks 5th Avenue");
+  colnames(nyc) = c("latitude","longitude");
+
+nyc;
+
+
+
+```
+In this RNotebook, write brief responses to the questions:
+
+####  *Question 1:*  When would the "angle of rotation" for NYC matter to compute the Manhattan Distance?
+
+####  *Question 2:*  How does Di Fara Pizza complicate things?  How would you really have to compute distance in this scenario (thing Google Maps "walking" or "driving directions")?
+
+####  *Question 3:*  Which distance metric seems to be most conservative (overstating distance:  Manhattan, Euclidean, Haversine)?
+
+####  *Question 4:*  Which Spherical Ellipsoid Distance is most accurate (Haversine, Meeus, or Geo)?  How can you verify that?
+
+# Store Locator
+I did some work for a company called 'organicgirl' a few years back.  We built a store locator as part of their brand presence online.  It was in production for about 8 years.  You can check out their "updated version" that doesn't full operate.
+
+The idea is that you input a ZIP code, we have a database that loosely maps that ZIP code to a latitude and longitude.  Then you query a database to find other entities (e.g., stores) within a given radius.
+
+Searching for a radius in a database is expensive.  So it is easier to search on a square.  After SQL gives you the result for a square, you manually compute the distances of each to the query input and reduce the result said to the circle (the inscribed circle in the square).
+
+So I created a SQL sandbox and have populated it with a table of ZIPCODES for the USA and CANADA.  It has 864,000 records (most are from CANADA oddly enough).  I removed CANADA, and I believe the US-data is intack.  About 42,000 records.
+
+To keep the database connection information "PRIVATE", please see the `_SECRET_.txt` file in the DROPBOX.  Run that code from the "console" of RStudio below, but DO NOT store in the RNotebook.  `_student_access__\unit_01_exploratory_data_analysis\week_05`
+
+```{r, mychunk-store-location}
+# this is something you would never want public normally
+# it is a sandbox, so let's give it a whirl ...
+
+
+db.host   = Sys.getenv("WSU_SANDBOX_HOST");
+db.name   = Sys.getenv("WSU_SANDBOX_DATABASE");
+db.user   = Sys.getenv("WSU_SANDBOX_USER");
+db.passwd = Sys.getenv("WSU_SANDBOX_PASSWD");
+
+# tidyverse has a SQL syntax structure, but RMySQL follows SQL syntax a bit.
+
+
+## This is set from the command console ... the one line of code is in the dropbox called "db
+library(RMySQL); # install.packages("RMySQL", dependencies=TRUE);
+
+mysql.connection = dbConnect(RMySQL::MySQL(),
+                            user = db.user,
+                            password = db.passwd,
+                            dbname = db.name ,
+                            host = db.host);
+
+
+db.table.zipcodes = "zipcodes";
+
+zipcode = '99163';  # CANADA allows strings for zipcodes, I removed, so only U.S.
+
+mysql.query.template = "SELECT * FROM {tablename} WHERE zipcode = '{zipcode}';";
+mysql.query = gsub("{tablename}",db.table.zipcodes, mysql.query.template, fixed=TRUE);
+mysql.query = gsub("{zipcode}",zipcode, mysql.query, fixed=TRUE);
+
+mysql.query;
+  
+#result = dbSendQuery(mysql.connection, mysql.query);
+result = dbGetQuery(mysql.connection, mysql.query);
+
+result;
+
+
+# these functions don't exist in R?
+deg2rad = function(degrees)
+  {
+   degrees * (pi/180);
+  }
+rad2deg = function(radians )
+  {
+  radians * (180/pi);
+  }
+
+
+radius.miles = 10;
+# let's build a box
+my.latitude = result$latitude[1];
+my.longitude = result$longitude[1];
+
+delta.latitude = radius.miles / 68.703 ;
+delta.longitude = radius.miles / (69.172 * cos(deg2rad(my.longitude))); 
+
+# 4 sides of the square ... CREATE A BOUNDING BOX
+latitude.lower = my.latitude - delta.latitude;
+latitude.upper = my.latitude + delta.latitude;
+
+longitude.lower = my.longitude - delta.longitude;
+longitude.upper = my.longitude + delta.longitude;
+
+## longitude signs are opposite of latitude, would that be different outside US?
+mysql.query.template = "SELECT * FROM {tablename} WHERE latitude > {latitude.lower} AND latitude < {latitude.upper} AND longitude < {longitude.lower} AND longitude > {longitude.upper} ORDER BY zipcode ASC;";
+mysql.query = gsub("{tablename}",db.table.zipcodes, mysql.query.template, fixed=TRUE);
+mysql.query = gsub("{zipcode}",zipcode, mysql.query, fixed=TRUE);
+mysql.query = gsub("{latitude.lower}",latitude.lower, mysql.query, fixed=TRUE);
+mysql.query = gsub("{latitude.upper}",latitude.upper, mysql.query, fixed=TRUE);
+mysql.query = gsub("{longitude.lower}",longitude.lower, mysql.query, fixed=TRUE);
+mysql.query = gsub("{longitude.upper}",longitude.upper, mysql.query, fixed=TRUE);
+
+mysql.query;
+
+
+## database went away, so I need to connect again ... this should be a function
+## this "remote database connection" is always going to be slow ... 
+## maybe consider HeidiSQL on your workstation, and connect via "localhost"
+## http://md5.mshaffer.com/WSU_STATS419/zipcodes.sql
+
+mysql.connection = dbConnect(RMySQL::MySQL(),
+                            user = db.user,
+                            password = db.passwd,
+                            dbname = db.name ,
+                            host = db.host);
+
+result.neighbors = dbGetQuery(mysql.connection, mysql.query);
+
+result.neighbors;
+# note: we have our "seed" (99163) in our result set.
+
+```
+
+#### TODO:  Take this information and you compute the pair-wise distances using the best Spherical Ellipsoid method.  Recall the focal zipcode (99163) are the distances we care about.  Add as column to the dataframe `result.neighbors$distance` with the ppropriate values in miles.  Add another column `result.neighbors$incircle` which is TRUE/FALSE depending on the distance provided as the input.  Remove the specific row for the focal zipcode (99163) at the very end.
+
+#### TODO:  Choose a zipcode of your choice (not Pullman), and repeat everything above for that zipcode.
+
+# String distances
+
+Distance can also be applied to strings, based on various methods.  For example, if I am typing the word `the`, I may accidently transpose some of `hte` characters.
+
+```{r,chunk-string-distance}
+
+library(RecordLinkage); # install.packages("RecordLinkage", dependencies=TRUE);
+w1.singular = "TRIANGLE";     
+w1.sorted.vec = sort( unlist(strsplit(w1.singular,"",fixed=TRUE)) );
+w1.sorted.vec;
+w1.sorted = paste0(w1.sorted.vec,collapse="");
+w1.sorted;
+
+w1 = "TRIANGLES";             sort( unlist(strsplit(w1,"",fixed=TRUE)) );
+w2 = "GNARLIEST";             sort( unlist(strsplit(w2,"",fixed=TRUE)) );
+w3 = "RESLATING";             sort( unlist(strsplit(w3,"",fixed=TRUE)) );
+
+# the number returned is bound between [0,1]
+jarowinkler(w1.singular, w1);
+jarowinkler(w1.singular, w2);
+jarowinkler(w1.singular, w3);
+
+jarowinkler(w1, w2);
+jarowinkler(w1, w3);
+
+#############
+
+levenshteinSim(w1.singular, w1);
+levenshteinSim(w1.singular, w2);
+levenshteinSim(w1.singular, w3);
+
+levenshteinSim(w1, w2);
+levenshteinSim(w1, w3);
+
+levenshteinDist(w1.singular, w1);
+levenshteinDist(w1.singular, w2);
+levenshteinDist(w1.singular, w3);
+
+levenshteinDist(w1, w2);
+levenshteinDist(w1, w3);
+
+
+```
+
+
+#### Question:  What do you notice about w1, w2, w3 when we sort the characters that compose each string?  What is the term for this type of equality (e.g., `ant` and `tan` mixing up the same characters to form a new string that has its own meaning)? Is there a string function that would find such examples?
+
+We will revisit string distances again.  This was just a brief introduction to the idea.

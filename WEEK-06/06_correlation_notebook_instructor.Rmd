@@ -1,0 +1,608 @@
+---
+title: 'R Notebook sandbox: Playing with Correlation'
+output:
+  html_document:
+    df_print: paged
+    toc: true
+    toc_float: true
+    toc_depth: 4
+    fig_caption: true
+    number_sections: true
+my-var: "monte"  # https://bookdown.org/yihui/rmarkdown/html-document.html
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE);
+knitr::opts_chunk$set(warning = FALSE);
+knitr::opts_chunk$set(message = FALSE);
+
+## this should knit, but I am running some IMDB stuff
+## so I wasn't able to verify a final Knit.
+## please let me know in the Discussion Board if you
+## find any errors, and I will fix
+```
+
+# Correlation
+
+## Review of Basic Differences Testing 
+
+### Variance
+Variance measures the spread of a variable.  Consider the following three examples:
+
+```{r, chunck-variance-1}
+library(humanVerseWSU); 
+# You need R tools for this to work:  https://cran.r-project.org/bin/windows/Rtools/
+# You may want to see if you have the latest version...
+# library(devtools);
+# detach(package:humanVerseWSU);
+# install_github("MonteShaffer/humanVerseWSU/humanVerseWSU"); 
+# Choose (3) None to minimize headaches ....
+
+
+normalDiagnosticPlot = function(x,  normalityTest=TRUE,
+                                    showDensity=TRUE,
+                                    showNormal=TRUE,
+                                    showSDs=FALSE,
+                                    showAxis=TRUE
+                                )
+  {
+  xx = na.omit(x);
+  x.stats = doStatsSummary(x);
+  # x.table = table(x);
+  
+  # library(KernSmooth); # install.packages("KernSmooth", dependencies=TRUE);
+  # bin.count = dpih(xx);
+  # mybreaks = 100 * bin.count;
+  
+  mxlim = c(x.stats$mean - 3.5 * x.stats$sd , 
+            x.stats$mean + 3.5 * x.stats$sd );
+  h = hist(xx, breaks="Sturges", plot=F);
+  mylim = c(0, max(h$counts));
+  
+  myMain = paste0(  "Histogram (mean: ",
+                  round(x.stats$mean,digits=3), 
+                  ", sd: ",
+                  round(x.stats$sd,digits=3),
+                  ")"
+                  );
+  
+  
+  
+mxlab = "";  
+  if(normalityTest)
+    {
+    isNormal = NULL;
+    if(x.stats$shapiro.is.normal$`0.10`) { isNormal = 0.10; }
+    if(x.stats$shapiro.is.normal$`0.05`) { isNormal = 0.05; }
+    if(x.stats$shapiro.is.normal$`0.01`) { isNormal = 0.01; }
+    
+    isNormalResult = FALSE;
+    if(!is.null(isNormal)) { isNormalResult = TRUE;}
+    if(is.null(isNormal)) { isNormal = 0.05;}
+    
+    mxlab = paste0("Shapiro Normality test at (alpha = ",
+                isNormal, ") is ... ",isNormalResult);
+    }
+  
+  
+### Histogram  
+  hist(xx, breaks="Sturges",  xlim=mxlim, ylim=mylim,
+      xlab=mxlab, xaxt='n', main=myMain);
+  
+  if(showDensity)
+    {
+    par(new=T); # overlay
+  ### Density Plot (remember first reading?)
+    plot( density(xx, kernel="epanechnikov") ,
+            xlim=mxlim, 
+            main="", 
+            xlab="", 
+            ylab="", 
+            xaxt='n', 
+            yaxt='n'  
+        );
+    }
+    
+  
+  if(showNormal)
+    {    
+    par(new=T); # overlay  
+  ### Normal Curve
+    xt = seq(-3.5,3.5, length=100);
+  			yt = dnorm(xt);
+  
+  	plot( xt, yt, 
+  	      type="l", 
+  	      lwd=2, 
+  	      col = "red",
+  	      axes=F, 
+  	      xlab="",
+  	      ylab=""
+  	    );	
+    }
+  	
+    
+  if(showSDs)
+    {
+  ### vertical lines at sd's of data ...	
+    abline(v=x.stats$mean,lwd=4,col="blue");
+      abline(v=x.stats$mean - 1 * x.stats$sd , col="green",lwd=3);
+      abline(v=x.stats$mean + 1 * x.stats$sd , col="green",lwd=3);
+      abline(v=x.stats$mean - 2 * x.stats$sd , col="green",lwd=2);
+      abline(v=x.stats$mean + 2 * x.stats$sd , col="green",lwd=2);
+      abline(v=x.stats$mean - 3 * x.stats$sd , col="green",lwd=1);
+      abline(v=x.stats$mean + 3 * x.stats$sd , col="green",lwd=1);
+    }
+  
+    
+  if(showAxis)
+    {
+  ### axis labels showing the ability to use expression			
+  	axis(1, at = -3:3, labels = c( expression("-3"~hat(sigma) ), expression("-2"~sigma ), expression("-1"~hat(s) ), expression(bar(x)), expression("1"~hat(s) ), "2s", c( expression("3"~hat(sigma) ))) );
+  		#axis(1, at = -3:3, labels = c("-3s", "-2s", "-1s", "hat(mu)", "1s", "2s", "3s"))		
+    }
+  			
+  
+  }
+
+x.0.1 = rnorm(100,0,1);   normalDiagnosticPlot(x.0.1);
+x.3.1 = rnorm(100,3,1);   normalDiagnosticPlot(x.3.1);
+x.9.1 = rnorm(100,9,1);   normalDiagnosticPlot(x.9.1);
+
+
+```
+Notice that they all have about the same "spread" yet have different mean values.
+
+```{r, chunck-variance-2}
+x.0.1b = rnorm(100,0,1);   normalDiagnosticPlot(x.0.1b);
+x.0.2 = rnorm(100,0,2);   normalDiagnosticPlot(x.0.2);
+x.0.3 = rnorm(100,0,3);   normalDiagnosticPlot(x.0.3);
+
+
+```
+Notice that they all have different amounts of "spread" yet have about the same mean values.
+
+### Student's t-test:  Compare means of two independent samples
+
+TODO: Review the one-sided and two-sided t-test \url{https://en.wikipedia.org/wiki/Student%27s_t-test}.  Demonstrate your knowledge of those two tests by applying it to one or more of the x-data prepared above (e.g., `x.0.1`).
+
+```{r, chunck-student-t}
+#t.test(x.0.1, x.0.1b, paired=FALSE, var.equal=FALSE);
+
+```
+
+### Welch's t-test:  Compare means of two independent samples
+
+We cannot always assume the two samples we want to compare have the same variance.  With Student's t-test the pooled variance is used.  For Welch's t-test, a different form is used \url{https://en.wikipedia.org/wiki/Welch%27s_t-test}.
+
+```{r, chunck-welch-t}
+t.test(x.0.1, x.0.1b, paired=FALSE, var.equal=FALSE);
+
+```
+
+## Interdependence of data 
+Above we review when two "independent" samples may have different means or variances.  But what happens when the two samples have some degree of "codependency" or "interdependence"?
+
+### Rather Independent 
+```{r, chunck-interdependence}
+plot(x.0.1, x.0.1b);
+    cor(x.0.1, x.0.1b, method="pearson");  # default
+    cor(x.0.1, x.0.1b, method="kendall");
+    cor(x.0.1, x.0.1b, method="spearman");
+
+cor.test(x.0.1, x.0.1b, method="pearson");  # default
+cor.test(x.0.1, x.0.1b, method="kendall");
+cor.test(x.0.1, x.0.1b, method="spearman");
+
+x.df = data.frame( cbind(x.0.1, x.3.1, x.9.1, x.0.1b, x.0.2, x.0.3) );
+    cor(x.df);
+plot(x.df);
+    symnum( cor(x.df) ); # remove noise based on cutpoints
+    symnum( cor(x.df), 
+            diag = TRUE,
+            corr = TRUE,
+            cutpoints=c(0.1,0.4,0.7,0.9), 
+            symbols = c(" ",".","*","**","***") 
+          );
+    corrplot::corrplot( (cor(x.df)) ); 
+  
+# https://www.statmethods.net/advgraphs/correlograms.html  
+library(corrgram); # install.packages("corrgram",dependencies=TRUE);
+    corrgram(x.df, 
+              order=TRUE, 
+              lower.panel=panel.shade,
+              upper.panel=panel.pie,
+              text.panel=panel.txt,
+              main="My title");
+
+library(Hmisc); # install.packages("Hmisc",dependencies=TRUE);
+    rcorr(as.matrix(x.df), type="pearson");
+
+# corrplot::corrplot(
+# sweep 
+# symnum
+
+```
+Notice that since the data was randomly generated "independently", the "correlation" is close to zero.  
+
+### Functionally Dependent 
+```{r, chunck-interdependence2}
+# requires functions-standardize.R of humanVerseWSU
+
+y.0.1.min = standardizeToMin(x.0.1);
+
+plot(x.0.1, y.0.1.min);
+cor(x.0.1, y.0.1.min, method="pearson");  # default
+cor(x.0.1, y.0.1.min, method="kendall");
+cor(x.0.1, y.0.1.min, method="spearman");
+
+cor.test(x.0.1, y.0.1.min, method="pearson");  # default
+cor.test(x.0.1, y.0.1.min, method="kendall");
+cor.test(x.0.1, y.0.1.min, method="spearman");
+
+
+y.0.1.max = standardizeToMax(x.0.1);
+
+plot(x.0.1, y.0.1.max);
+cor(x.0.1, y.0.1.max, method="pearson");  # default
+cor(x.0.1, y.0.1.max, method="kendall");
+cor(x.0.1, y.0.1.max, method="spearman");
+
+cor.test(x.0.1, y.0.1.max, method="pearson");  # default
+cor.test(x.0.1, y.0.1.max, method="kendall");
+cor.test(x.0.1, y.0.1.max, method="spearman");
+
+
+```
+QUESTION(s) to PONDER:  Why does one have a negative slope and the other have a positive slope?  Does one (1) mean "perfect correlation"?  How does that relate to being a linear combination of a vector basis?
+
+### Somewhere in Between 
+
+#### Iris
+```{r, chunck-correlation-iris}
+
+iris.df = iris;
+iris.df$Species = as.numeric(iris.df$Species); # if not, non-numeric, throws an error ...
+
+round( cor(iris.df), digits=2);
+plot(iris.df);
+    symnum( cor(iris.df), 
+            diag = TRUE,
+            corr = TRUE,
+            cutpoints=c(0.4,0.7,0.9), 
+            symbols = c(" ",".","*","**") 
+          ); 
+    corrplot::corrplot( (cor(iris.df)) ); 
+
+
+# Let's suppose we want to consider that 
+# Sepal.Length is a function of Sepal.Width
+
+Y = iris.df$Sepal.Length;
+X = iris.df$Sepal.Width;
+myData = data.frame(cbind(Y,X));
+
+
+plot(X,Y, xlim=range(X), ylim=range(Y) );
+  linear.model = lm(Y~X, myData );
+  linear.model.summary = summary(linear.model);
+  Y.predicted = predict(linear.model);
+par(new=TRUE);
+  myMain = paste0("R^2=", 
+          round(linear.model.summary$r.squared, digits=4),
+              "; adj.R^2=",
+          round(linear.model.summary$adj.r.squared, digits=4)
+                );
+plot(X,Y.predicted, main=myMain, ylab="", xlim=range(X), ylim=range(Y), col="red");
+  abline(linear.model, col="blue");
+
+
+cor(X, Y, method="pearson");  # default
+cor(X, Y, method="kendall");
+cor(X, Y, method="spearman");
+
+cor.test(X, Y, method="pearson");  # default
+cor.test(X, Y, method="kendall");
+cor.test(X, Y, method="spearman");
+
+#####################################################
+# different visualization
+library(ggplot2);
+
+ggplot() + geom_point(aes(x = X,  
+                y = Y), colour = 'red') +
+geom_line(aes(x = X, 
+y = Y.predicted), colour = 'blue') +
+          
+ggtitle('X vs Y') +
+xlab('X') +
+ylab('Y') 
+
+
+
+
+```
+
+
+
+#### Will & Denzel 
+```{r, chunck-correlation-imdb}
+
+library(devtools);
+source_url("https://raw.githubusercontent.com/MonteShaffer/humanVerseWSU/master/humanVerseWSU/R/functions-dataframe.R");
+
+source_url("http://md5.mshaffer.com/WSU_STATS419/denzel");
+  str(denzel);
+source_url("http://md5.mshaffer.com/WSU_STATS419/will");
+  str(will);
+
+imdb.df = rbind(denzel$movies.50, will$movies.50);
+
+## requires latest humanVerseWSU
+## rank & votes & so on ... 
+imdb.rv = removeAllColumnsBut( imdb.df, 
+            c("rank","year","minutes",
+              "ratings","metacritic","votes","millions") );
+dim(imdb.rv);  # 100 movies
+
+imdb.rv = removeNAsFromDataFrame(imdb.rv, c("metacritic","millions") );
+
+dim(imdb.rv);  # 85 movies, is it worth it?
+
+loadInflationData(); # requires functions-inflation.R in humanVerseWSU ...
+
+imdb.rv = standardizeDollarsInDataFrame(imdb.rv, 2000, "millions", "year", "adjMillions2000");
+
+
+
+round( cor(imdb.rv), digits=2);
+plot(imdb.rv);
+    symnum( cor(imdb.rv), 
+            diag = TRUE,
+            corr = TRUE,
+            cutpoints=c(0.4,0.7,0.9), 
+            symbols = c(" ",".","*","**") 
+          ); 
+    corrplot::corrplot( (cor(imdb.rv)) ); 
+```
+
+Can you read the results above?  Are you able to describe the details?  Is a correlation strong/weak?  Is it positive or negative?  What exactly does that all mean?
+
+##### rank vs. minutes 
+--WRITE SOMETHING HERE--
+
+##### millions vs. year 
+--WRITE SOMETHING HERE--
+
+##### ratings vs. adjMillions2000 
+--WRITE SOMETHING HERE--
+
+
+```{r, chunck-correlation-imdb2}
+# Let's suppose we want to consider that 
+# Ratings is a function of adjMillions2000
+
+
+
+
+
+Y = imdb.rv$ratings;
+X = imdb.rv$adjMillions2000;
+
+myData = data.frame(cbind(Y,X));
+
+
+plot(X,Y, xlim=range(X), ylim=range(Y) );
+  linear.model = lm(Y~X, myData );
+  linear.model.summary = summary(linear.model);
+  Y.predicted = predict(linear.model);
+par(new=TRUE);
+  myMain = paste0("R^2=", 
+          round(linear.model.summary$r.squared, digits=4),
+              "; adj.R^2=",
+          round(linear.model.summary$adj.r.squared, digits=4)
+                );
+plot(X,Y.predicted, main=myMain, ylab="", xlim=range(X), ylim=range(Y), col="red");
+  abline(linear.model, col="blue");
+
+cor(X, Y, method="pearson");  # default
+cor(X, Y, method="kendall");
+cor(X, Y, method="spearman");
+
+cor.test(X, Y, method="pearson");  # default
+cor.test(X, Y, method="kendall");
+cor.test(X, Y, method="spearman");
+
+#####################################################
+# different visualization
+library(ggplot2);
+
+ggplot() + geom_point(aes(x = X,  
+                y = Y), colour = 'red') +
+geom_line(aes(x = X, 
+y = Y.predicted), colour = 'blue') +
+          
+ggtitle('X vs Y') +
+xlab('X') +
+ylab('Y') 
+```
+
+```{r, chunck-correlation-imdb-3d}
+### 3-D plot
+library(rgl);
+Z = imdb.rv$millions2000;
+plot3d(x=X, y=Y, z=Z, 
+      type="p", col="red", 
+      xlab="X", ylab="Y", zlab="Z", 
+      size=5, lwd=15, box=F
+      );
+
+# try this one ...
+X = rnorm(100,0,1);
+Y = rnorm(100,0,1);
+Z = X+Y;
+plot3d(x=X, y=Y, z=Z, 
+      type="p", col="red", 
+      xlab="X", ylab="Y", zlab="Z", 
+      size=5, lwd=15, box=F
+      );
+# what do you notice?  
+# how is this simular to plot(X,z-scores) on a previous notebook?
+
+# functionally, notice that RStudio doesn't embed locally.  Is there a new 3D plotting tool that does?
+
+```
+
+#### Measure
+```{r, chunck-correlation-measure-instructor}
+
+library(devtools);
+measure.instructor = read.csv("http://md5.mshaffer.com/WSU_STATS419/measure-04343803d489fe8ee2c5f6ab97a101e9.txt", header=TRUE, sep="|");
+
+getOne = c("hand.length", "hand.width", "hand.elbow", "elbow.armpit", "arm.reach", "foot.length", "floor.kneepit", "floor.hip", "floor.armpit");
+n.rows = dim(measure.instructor)[1];
+
+
+for(one in getOne)
+  {
+  measure.instructor[one] = NA;
+  }
+  
+for(i in 1:n.rows)
+  {  
+  measure.row = measure.instructor[i,];
+  for(one in getOne)
+    {
+    nidx = getIndexOfDataFrameColumns(measure.instructor, one);
+    
+    myleft = paste0(one,".left");
+      lidx = getIndexOfDataFrameColumns(measure.row, myleft);
+    myright = paste0(one,".right");
+      ridx = getIndexOfDataFrameColumns(measure.row, myleft);
+    
+      print(paste0(
+                  "left: ",myleft," --> ",lidx,
+                  " right: ",myright," --> ",ridx
+                  )
+            );
+      
+      row.m = mean(
+            c(as.numeric(unlist(measure.row[lidx])),
+            as.numeric(unlist(measure.row[ridx]))),
+            na.rm=TRUE);
+      
+    measure.instructor[i,nidx] =  row.m;
+    }
+  }
+
+str(measure.instructor); # lot's of columns ...
+
+
+
+```
+
+You should have a dataset of 10 persons.  Once I merge all of the datasets of each student participant, I will provide you a larger dataset.
+
+You should read the "Vitrian Man" reading found in the Dropbox for this week.  This would be one set of research activities you could perform for your project 1; that is, review the correlations of various components of the body.  It would be a good idea to write some code below to begin studying the correlations.
+
+```{r, chunck-correlation-measure-student}
+## do some initial exploration of your measure-data 
+
+## you should be thinking about "one" good research question for PROJECT 01 ... sub-questions may be appropriate.
+
+## At the top-level of your "WSU_STATS419_FALL2020" repository add a folder "PROJECT-01" if you haven't done so yet.  Remember to only move "public-information" into that folder ... nothing private.  Private would be participant's names, passwords, and so on...
+
+## maybe add a section to your 01_notebook in your project folder called # Correlation and perform the analyses there (or here or BOTH, it's up to you).
+
+
+```
+
+
+#### Personality 
+```{r, chunck-correlation-personality}
+
+personality.raw = readRDS( system.file("extdata", "personality-raw.rds", package="humanVerseWSU") );
+
+cleanupPersonalityDataFrame = function(df)
+  {
+  df = removeColumnsFromDataFrame(personality.raw, "V00");
+  dim(df);  # 838
+  
+  
+  ywd.cols = c("year","week","day");
+  ywd = convertDateStringToFormat( df$date_test,
+                                    c("%Y","%W","%j"),  
+                                    ywd.cols,
+                                    "%m/%d/%Y %H:%M"
+                                  );
+  
+  ndf = replaceDateStringWithDateColumns(df,"date_test",ywd);
+  ndf = sortDataFrameByNumericColumns(ndf, ywd.cols, "DESC");
+  ndf = removeDuplicatesFromDataFrame(ndf, "md5_email");
+  
+  dim(ndf); # 678
+  ndf;
+  }
+
+
+personality.clean = cleanupPersonalityDataFrame(personality.raw);
+
+### let's examine the data in total
+
+personality.Vs = removeColumnsFromDataFrame(personality.clean,c("md5_email","year","week","day"));
+
+
+round( cor(personality.Vs), digits=2);
+#plot(personality.Vs);  # too big ...
+    symnum( cor(personality.Vs), 
+            diag = TRUE,
+            corr = TRUE,
+            cutpoints=c(0.15,0.30,0.60,0.90), 
+            symbols = c(" ",".","*","**","***") 
+          ); 
+    corrplot::corrplot( (cor(personality.Vs)) ); 
+
+## let's look at all the data ... 
+Vs = sample( as.vector(unlist(personality.Vs)) );
+head(Vs);
+
+normalDiagnosticPlot(Vs[1:4000]);  # shapiro.test breaks if too large ...
+
+
+```
+We have too many observations (n=678) and too many variables (m=60) to be able to effectively analyze this data.  We need to begin performing multivariate analysis.
+
+In general, we treat the rows as observations and the columns as features, factors, or variables.  We could transpose the dataframe and reverse rows/cols.  As we proceed, remember this.  We will talk about general forms of data manipulation called data reduction.
+
+In general, we want to reduce the number of factors to consider.  Or we may want to classify the subjects observed (the rows) into like groups.  For the next two weeks we will consider "exploratory data analysis of multivariate data".
+
+## Correlation does not imply causation 
+
+Does zero correlation imply independence?
+
+```{r, chunck-correlation-causation}
+
+X = rnorm(100,0,1);
+  Y = ( X - mean(X) ) / sd(X);
+cor(X,Y);  ## ARGH!
+
+  Y = X^2;
+cor(X,Y);  ## Getting closer
+
+  Y = ( sample(X) - mean(X) ) / sd(X);
+cor(X,Y);  ## Getting closer
+
+# build a Y that is a function of X such that correlation is 0.
+# it can be close to zero with isClose function
+# ?isClose
+
+# maybe review the formula for correlation
+# \url{https://en.wikipedia.org/wiki/Correlation_and_dependence#Sample_correlation_coefficient}
+
+# \url{https://math.stackexchange.com/questions/444408/why-does-zero-correlation-not-imply-independence}
+# \url{https://stats.stackexchange.com/questions/413326/why-does-independence-imply-zero-correlation}
+
+# if need be, you can change the form of X, but it should be of length 100...
+
+
+```

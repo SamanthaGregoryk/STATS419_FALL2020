@@ -1,0 +1,220 @@
+---
+title: 'R Notebook sandbox: Playing with Hierarchical Clustering'
+output:
+  html_document:
+    df_print: paged
+    toc: true
+    toc_float: true
+    toc_depth: 4
+    fig_caption: true
+    number_sections: true
+my-var: "monte"  # https://bookdown.org/yihui/rmarkdown/html-document.html
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE);
+knitr::opts_chunk$set(warning = FALSE);
+knitr::opts_chunk$set(message = FALSE);
+
+## this should knit, but I am running some IMDB stuff
+## so I wasn't able to verify a final Knit.
+## please let me know in the Discussion Board if you
+## find any errors, and I will fix
+```
+
+# Hierarchical Clustering
+
+We are now going to apply distance to aggregate multivariate data.  Recall that typically we refer to a data frame based on its rows and columns.  Generally, the rows represent observations and the columns represent features.
+
+As we try to aggregate data, we need to ask:  are we aggregating the rows or the columns?  Why?  So let's look at an example.
+
+## Data `protein`
+
+<http://www.dm.unibo.it/~simoncin/Protein.html>
+
+The following data, originated by A. Weber and cited in Hand et al. (1994, pp. 297), measure the amount of protein consumed for nine food groups in 25 European countries. The nine food groups are red meat (RedMeat), white meat (WhiteMeat), eggs (Eggs), milk (Milk), fish (Fish), cereal (Cereal), starch (Starch), nuts (Nuts), and fruits and vegetables (FruitVeg). Suppose you want to determine whether national figures in protein consumption can be used to determine certain types or categories of countries; specifically, you want to perform a cluster analysis to determine whether these 25 countries can be formed into groups suggested by the data.
+
+* Reference: Weber, A. (1973) Agrarpolitik im Spannungsfeld der internationalen Ernaehrungspolitik, Institut fuer Agrarpolitik und marktlehre, Kiel. Also found in: Gabriel, K.R. (1981) Biplot display of multivariate matrices for inspection of data and diagnosis. In Interpreting Multivariate Data (Ed. V. Barnett), New York: John Wiley & Sons, 147-173.
+
+* Hand, D.J., et al. (1994) A Handbook of Small Data Sets, London: Chapman & Hall, 297-298.
+
+
+```{r, chunck-load-protein}
+library(humanVerseWSU); 
+# You need R tools for this to work:  https://cran.r-project.org/bin/windows/Rtools/
+# You may want to see if you have the latest version...
+# library(devtools);
+# detach(package:humanVerseWSU);
+# install_github("MonteShaffer/humanVerseWSU/humanVerseWSU"); 
+# Choose (3) None to minimize headaches ....
+# library(humanVerseWSU);
+
+example.datasets.path = "C:/Users/Alexander Nevsky/Dropbox/WSU-419/Fall 2020/__student_access__/sample_latex_files/Multivariate-2009/datasets/";
+
+# https://www.codebus.net/d-2oZ.html
+protein.file = paste0(example.datasets.path,"protein.txt");
+protein = read.table(protein.file);
+row = protein[1,];
+
+colnames(protein) = row;
+protein = protein[-c(1),];
+
+protein;
+
+
+
+# why would I do this?
+protein.file2 = paste0(example.datasets.path,"pipe-format/protein.txt");
+write.table( protein , file=protein.file2, quote=FALSE, col.names=TRUE, row.names=FALSE, sep="|");
+protein = read.csv(protein.file2, header=TRUE, quote="", sep="|");
+protein;
+
+
+round( dist( removeColumnsFromDataFrame(protein,"Country") ), digits=2);
+
+
+round( cor( removeColumnsFromDataFrame(protein,"Country") ), digits=2);
+
+
+```
+
+### Should we take the transpose?
+
+So what do we want to aggregate?  Countries?  Or foods?  We can do either.
+
+```{r, chunck-transpose-protein}
+cols = colnames(protein);
+rows = protein$Country;
+
+df = removeColumnsFromDataFrame(protein,"Country");
+df.t = transposeMatrix(df);
+colnames(df.t) = rows;
+
+protein.t = as.data.frame(df.t);
+protein.t;
+
+dist(protein.t);
+
+#round( cor( protein.t ), digits=2);
+
+```
+
+### Distance function (e.g., Euclidean) needed for `hclust`
+
+Hierarchical Clustering uses the concept of dissimilarity (e.g., further distance is more dissimilar).  Let's try on an example.  Type `?hclust` for some basics on the usage.
+
+This approach is a bit slow and has a complexity of $n^3$; as the size of the data gets bigger, this approach gets much slower.
+
+
+```{r, chunck-hclust-function}
+
+# should we scale the data?
+X = removeColumnsFromDataFrame(protein,"Country");
+rownames(X) = protein$Country;
+
+methods = c("complete", "average", "single", "median", "centroid", "ward.D", "ward.D2", "mcquitty");
+
+for(method in methods)
+  {
+  time.start = Sys.time();  
+      X.hclust = hclust( dist(X), method=method);
+  plot(X.hclust);
+  time.end = Sys.time();
+  elapse = sprintf("%.3f", as.numeric(time.end) - as.numeric(time.start));
+  print(paste0(elapse, " secs to complete method ... ", method));
+  }
+
+
+
+
+```
+From above, would you conclude that Romania, Bulgaria, and Yugoslavia have similar `protein-eating` habits?  Any other clusters you can easily identify?  We call this unit `explorator data analysis` for a reason.  We try to visualize the data and articulate some initial findings.
+
+--WRITE SOMETHING HERE--
+
+```{r, chunck-pvclust-function}
+
+library(pvclust);  # install.packages("pvclust", dependencies=TRUE);
+
+# pvclust uses "bootstrapping" to analyze the stability of the hclust.  For some reason, you have to transpose the data inputs to still "cluster" by country.
+
+# nboot=1000 ... is it 1000 times slower?
+# r = seq(0.5,1.4,by=.1); # what proportion of the data should be used in the bootstrap
+
+
+for(method in methods)
+  {
+  time.start = Sys.time();  
+      X.pvclust = pvclust ( protein.t, method.hclust=method);
+  plot(X.pvclust);
+      pvrect(X.pvclust);
+  time.end = Sys.time();
+  elapse = sprintf("%.3f", as.numeric(time.end) - as.numeric(time.start));
+  print(paste0(elapse, " secs to complete method ... ", method));
+  }
+
+# this will take awhile to Knit ... 
+
+```
+
+The red box around certain dendograms represents a `best-guess` final answer.  In general, it appears there are two clusters on countries.  So although the individual `hclust` dendograms suggested maybe more refined cluster.
+
+The red numbers are called `au p-values` ... Would you conclude that Portugal appears to be an odd-country out?
+
+--WRITE SOMETHING HERE--
+
+#### Repeat above with a scaled X
+
+For the above examples, try scaling the data first.  That is, use `Xs = scale(X);`  
+
+Make some comments about the differences.  Before proceeding, make a decision on whether or not you plan on scaling the data.
+
+--WRITE SOMETHING HERE--
+
+#### Repeat above `hclust` and `pvclust` where the aggregation is on food types, not countries
+
+Now, you copy those two chunks and use the opposite data forms.  Where `protein` was used, you should use `protein.t` and vice versa.
+
+Are you using `X` or `Xs` to perform this analysis.
+
+--WRITE SOMETHING HERE--
+
+
+## Dataset `measure` (e.g., Project 1) 
+
+Would you want to cluster the "participants" or the "body parts"?  Why?
+
+--WRITE SOMETHING HERE--
+
+Maybe do some `sandbox play` with your toy dataset.  We will get you the larger dataset soon.
+
+## Dataset `cars` 
+
+```{r, chunck-load-cars}
+
+car.file = paste0(example.datasets.path,"MBA_CAR_ATTRIB.txt");
+
+mba.cars = na.omit(read.table(car.file,na.strings='.'));
+
+myAttributes = c("Exciting", "Dependable", "Luxurious", 
+                  "Outdoorsy", "Powerful", "Stylish",
+                  "Comfortable", "Rugged", "Fun",
+                  "Safe", "Performance", "Family",
+                  "Versatile", "Sports", "Status",
+                  "Practical");
+
+car.ids = mba.cars$V1;
+
+cars = mba.cars[,3:18];
+
+colnames(cars) = myAttributes;
+rownames(cars) = car.ids;
+
+head(cars);
+
+# should we scale the data ... ?
+
+```
+Use `hclust` and `pvclust` to aggregate `myAttributes`
+
+--WRITE SOMETHING HERE--

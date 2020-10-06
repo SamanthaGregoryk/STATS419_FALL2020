@@ -1,0 +1,379 @@
+---
+title: "Week 03 Assignment"
+authour: "Samantha Gregoryk"
+email: "samantha.gregoryk"
+course: "STATS 419 Survery of Multivariate Analysis"
+course-short: "STATS419"
+instructor: "Monte J. Shaffer"
+date: "21 September 2020"
+output: 
+  pdf_document:
+    citation_package: natbib
+    latex_engine: pdflatex
+    template: C:/Users/Samgr/desktop/STAT419/_git_/SamGregoryk/WSU_STATS419_FALL2020/latex-templates/homework.tex
+    fig_caption: true
+    number_sections: true
+  html_document:
+      df_print: paged
+      toc: true
+      toc_float: true
+---
+
+```{r, mychunk-1, message = FALSE}
+library(devtools);
+my.source = 'github';
+
+
+#install_github("MonteShaffer/humanVerseWSU/humanVerseWSU")
+
+library(humanVerseWSU)
+
+#github.path = "https://raw.githubusercontent.com/samgregoryk/WSU_STATS419_FALL2020/";
+#source_url( paste0(github.path, "master/WEEK-03/functions/libraries.R"));
+```
+
+\section{Question 1}
+
+  \subsection{Create the "rotate matrix" functions as described in lectures.}
+
+```{r, mychunk-matrix, message = FALSE}
+source_url( paste0(github.path,"master/WEEK-03/functions/functions-matrix.R"), local = T);
+
+myMatrix = matrix ( c (
+                      1, 0, 2,
+                      0, 3, 0,
+                      4, 0, 5
+                      ), nrow=3, byrow=T);
+  
+```
+
+  \subsection{Apply to the example "myMatrix".}
+
+```{r, mychunk-matrix-functions, message = FALSE}
+source_url( paste0(github.path,"master/WEEK-03/functions/functions-matrix.R"));
+
+transposeMatrix(myMatrix)
+rotateMatrix(myMatrix);
+rotateMatrix90(myMatrix)
+rotateMatrix90(myMatrix);
+rotateMatrix180(myMatrix);
+rotateMatrix270(myMatrix);
+
+```
+
+\section{Question 2}
+
+  \subsection{Recreate the graphic for the IRIS Data Set using R.  Same titles, same scales, same colors.}
+
+```{r, mychunk-iris-demo, message = FALSE}
+library(datasets);
+data(iris);
+
+plot(~Sepal.Length+Sepal.Width+Petal.Length+Petal.Width, 
+data = iris, main = "Iris Data (red=setosa,green=veriscolor,blue=virginica)",
+pch = 21, bg = c("red", "green", "blue")[iris$Species]);
+
+```
+
+\section{Question 3}
+
+  \subsection{Right 2-3 sentences concisely defining the IRIS Data Set.  Maybe search KAGGLE for a nice template.  Be certain the final writeup are your own sentences (make certain you modify what you find, make it your own, but also cite where you got your ideas from).}
+
+The IRIS Data Set includes three species (setosa, versicolor, and virginica) that each contain 50 samples along with some properties about each flower. These properties include the ID (amount of observations), sepal length (cm), sepal width (cm), petal length (cm), petal width (cm), and the species name (Learning, UCI Machine). \newline
+
+Learning, UCI Machine. “Iris Species.” Kaggle, 27 Sept. 2016, www.kaggle.com/uciml/iris.
+
+\newpage
+
+\section{Question 4}
+
+Import "personality-raw.txt" into R.Remove the V00 column. Create two new columns from the current column "date_test":  year and week. Sort the new data frame by YEAR, WEEK so the newest tests are first (The newest tests (e.g., 2020 or 2019) are at the top of the data frame). Then remove duplicates using the unique function based on the column "md5_email". Save the data frame in the same "pipe-delimited format" ( | is a pipe ) with the headers.
+
+```{r, mychunk-Personality-raw, message = FALSE}
+personality_df <- read.csv("https://raw.githubusercontent.com/samgregoryk/WSU_STATS419_FALL2020/master/WEEK-03/personality/personality-raw.txt", header = TRUE, sep = "|");
+```
+
+```{r, mychunk-Personality-clean, message = FALSE}
+source_url( paste0(github.path,"master/WEEK-03/functions/functions-dataframe.R"));
+
+# Remove the V00 column. 
+df1 = removeColumnsFromDataFrame(personality_df, "V00");
+
+# Create two new columns from the current column "date_test":  year and week. 
+date.strings = df1$date_test
+Ymd = convertDateStringToFormat(date.strings,"%Y-%m-%d","%m/%d/%Y %H:%M",numeric=F);
+
+df2 = cbind(df1, Ymd);
+
+# Sort the new data frame by YEAR, WEEK so the newest tests are first ... 
+## The newest tests (e.g., 2020 or 2019) are at the top of the data frame.
+df2$year = convertDateStringToFormat(df2$date_test,"%Y","%m/%d/%Y %H:%M");
+df2$week = convertDateStringToFormat(df2$date_test,"%W","%m/%d/%Y %H:%M");
+
+df3 = removeColumnsFromDataFrame(df2,"date_test");
+mycols = c("year","week");
+sortDataFrameByNumericColumns(df3, mycols, "DESC");
+
+# Then remove duplicates using the unique function based on the column "md5_email".  
+df4 = removeDuplicatesFromDataFrame(df3,"md5_email");
+
+# Save the data frame in the same "pipe-delimited format" ( | is a pipe ) with the headers.  
+#save(df4, file = "personality/personality-clean-Rmarkdown.txt", sep = "|")
+
+```
+
+  \subsection{Report how many records your raw dataset had and how many records your clean dataset has.}
+
+  Raw dataset: 838 records \newline
+  Clean dataset: 678 records
+
+\section{Question 5}
+
+  \subsection{Write functions for doSummary and sampleVariance and doMode. Test these functions in your homework on the "monte.shaffer@gmail.com" record from the clean dataset.  Report your findings.  For this "monte.shaffer@gmail.com" record, also create z-scores.}
+
+```{r, mychunk-sort-data, message = FALSE}
+df4 <- df4[c(2:61)]
+df4 <- df4[1,]
+
+```
+
+```{r, mychunk-Variance-1, message = FALSE}
+source_url( paste0(github.path,"master/WEEK-03/functions/functions-stats.R"));
+
+varN <- doSampleVariance(df4,"naive");
+
+```
+
+```{r, mychunk-Variance-2, message = FALSE}
+source_url( paste0(github.path,"master/WEEK-03/functions/functions-stats.R"));
+
+var2 <- doSampleVariance(df4,"jdfkldsjfklj");	
+
+```
+
+```{r, mychunk-doStatsSummary, message = FALSE}
+source_url( paste0(github.path,"master/WEEK-03/functions/functions-stats.R"));
+
+df5 <- as.numeric(df4)
+doStatsSummary(df5)
+
+```
+
+```{r, mychunk-Zscore, message = FALSE}
+std <- sd(df4);
+mn <- rowMeans(df4); 
+
+z_s <- (df4 - mn)/std;
+
+```
+
+  \subsection{Plot(x,y) where x is the raw scores for "monte.shaffer@gmail.com" and y is the z-scores from those raw scores.  Include the plot in your assignment.}
+
+```{r, mychunk-plot, message = FALSE}
+library(dplyr)
+
+combo <- bind_rows(df4, z_s);
+	
+combo$header <- 0
+combo <- combo[c(61, 1:60)]
+combo[1,1] <- "raw";
+combo[2,1] = "z-scores";
+	
+df5 <- data.frame(t(combo[-1]));
+colnames(df5) <- combo[, 1];
+	
+plot(df5)
+
+```
+```{r, mychunk-correlation, message = FALSE}
+cor(df5);
+```
+  \subsection{Write 2 sentences describing what pattern you are seeing and why this pattern is present.}
+
+As the raw scores increase, so do the z-scores. Since the correlation of the raw scores and z-scores is 1, this indicates that the pattern will have a positive relationship, which you can see from the plot above. 
+
+\newpage
+
+\section{Question 6}
+
+  \subsection{Compare Will Smith and Denzel Washington.}
+
+```{r, mychunk-inflation-table, message = FALSE}
+result1 <- read.table("C:/Users/SamGr/desktop/STAT419/_git_/SamGregoryk/WSU_STATS419_FALL2020/WEEK-03/datasets/inflation/recent.txt", header = TRUE, sep = "|");
+
+```
+
+```{r, inflation-stuff, message=FALSE}
+# add inflation rate for the year 2020 (1.35)
+result1[101,3] <- 1.35;
+
+# convert the percentage to decimals: (first year / second year) - 1
+x <- result1$dollar;
+y <- result1$dollar[2:101];
+new_inflation <- NULL;
+
+for(i in 1:length(x))
+	{
+	new_inflation[i] <- (y[i] / x[i]) - 1;
+	options(digits = 7);
+	}
+
+# combind table with new column 
+result2 <- cbind(result1, new_inflation);
+
+#shift rows down 1
+result2['new_inflation'] <- c(NA, head(result2['new_inflation'], dim(result2)[1] - 1)[[1]])
+
+# add beginnning variable to row 1
+result2[1,4] <- 0.156100000
+
+# convert inflation table so the year 2000 is $1,000,000 (the year 1920 is $116,144.02)
+# divide 1,000,000 (1920) by 861,000 (2000) to get 1.164...
+v1 <- result2$dollar[1] / result2$dollar[81] 
+
+# apply to all dollars by creating a new column
+result2$new_dollar <- result2$dollar * v1
+
+## change decimal format
+no_decimals <- formatC(result2$new_dollar, digits = 0, format = "f")
+result3 <- cbind(result2, no_decimals)
+
+# do the same for the inflation rate 
+result3$changed_inflation <- v1 * result3$new_inflation;
+
+# organize columns to see better
+result4 <- result3[, c(1, 7)];
+
+result4
+
+```
+
+```{r, mychunk-acotrs, message = FALSE}
+source_url( paste0(github.path,"master/WEEK-03/functions/functions-imdb.R"));
+
+nmid = "nm0000226";
+will = grabFilmsForPerson(nmid);
+
+nmid = "nm0000243";
+denzel = grabFilmsForPerson(nmid);
+
+```
+
+```{r, mychunk-will, message=FALSE}
+#### find table with all movies listed for WILL 
+# reorder year from earliest to latest 
+source_url( paste0(github.path,"master/WEEK-03/functions/functions-dataframe.R"));
+
+sortDataFrameByNumericColumns(will$movies.50, "year", "ASC");
+
+# only need inflation table from dates in the movie table 
+result4[-c(1:73), ];
+
+# extra stuff 
+will$movies.50 <- will$movies.50[, c(1:3, 5:10, 4, 11)];
+
+
+# match years from inflation table to years in will table for inflation rate
+w <- merge(will$movies.50, result4, by = c('year'));
+
+# create a new varibale $millions.2000 that converts each movie's millions based on the year of the movie
+### multiply the millions by the inflation.2000 for new column millions.2000
+w$millions.2000 <- w$millions * w$changed_inflation;
+
+# extra stuff
+options(digits = 22);
+w[is.na(w)] <- 0
+
+```
+
+```{r, mychunk-denzel, message = FALSE}
+#### find table with all movies listed for DENZEL 
+# reorder year from earliest to latest 
+source_url( paste0(github.path,"master/WEEK-03/functions/functions-dataframe.R"));
+
+sortDataFrameByNumericColumns(denzel$movies.50, "year", "ASC");
+
+# only need inflation table from dates in the movie table 
+result4[-c(1:73), ];
+
+# extra stuff 
+denzel$movies.50 <- denzel$movies.50[, c(1:3, 5:10, 4, 11)];
+
+
+# match years from inflation table to years in will table for inflation rate
+d <- merge(denzel$movies.50, result4, by = c('year'));
+
+# create a new varibale $millions.2000 that converts each movie's millions based on the year of the movie
+### multiply the millions by the inflation.2000 for new column millions.2000
+d$millions.2000 <- d$millions * d$changed_inflation;
+
+# extra stuff
+options(digits = 22);
+d[is.na(d)] <- 0
+
+```
+
+  \subsection{Comparing Will vs Denzel}
+
+From the years 1993 to 2020, Will Smith had grossed over 12.88 while 1,000,000 dollars was the base of the inflation rate in the year 2000. From the years 1981 to 2018, Denzel Washington has grossed  11.79 while 1,000,000 dollars was the base of the inflation rate in the year 2000. Since Will Smith has made more money over the years, while Denzel has a 10 year difference, Will Smith is considered the more successful actor in this case from a monetary perspective.
+
+\newpage
+
+\section{Question 7}
+
+  \subsection{Build side-by-side box plots on several of the variables to compare the two movie stars.}
+
+```{r, mychunk-boxplots1, message = FALSE}
+boxplot(w$year, col = "green", main = "Will Smith's Years in the Industry", ylab = "");
+boxplot(d$year, col = "purple", main = "Denzel Washington's Years in the Industry", ylab = "");
+```
+ 
+Both Will Smith and Denzel Washington have made frequent number of movies over the years they have been acting. From both box plots, it shows that Will Smith and Denzel Washington have made about an even number (by even I mean closer to uniform distribution) of movies each year since the time they started acting to the their most recent year. It also shows the most frequent movies made from Will Smith was around the mid-2000s while Denzel Washington’s was around the upper 90s to early 2000s.
+  
+```{r, mychunk-boxplots2, message = FALSE}
+boxplot(w$millions.2000, col = "green", main = "Will Smith's Grossed Millions", ylab = "");
+boxplot(d$millions.2000, col = "purple", main = "Denzel Washington's Grossed Millions", ylab = "");
+
+```
+
+While Will Smith has made more money in a shorter amount of time while the inflation rate was at a base in 2000, the median of how much he’s made is around 0.2 million dollars per movie, while Denzel Washington’s was around 0.1 to 0.15 million dollars per movie. Will Smith has almost made more than 50% per movie than Denzel Washington has.
+
+```{r, mychunk-boxplots3, message = FALSE}
+boxplot(w$rank, col = "green", main = "Will Smith's Ranks", ylab = "Rank");
+boxplot(d$rank, col = "purple", main = "Denzel Washington's Ranks", ylab = "Rank");
+
+```
+
+Will Smith and Denzel Washington both have the about the same amount of ranks per movie. Since the boxplots are pretty much identical, it is easy to see the ranks are about the same for each actor.
+
+```{r, mychunk-boxplots4, message = FALSE}
+boxplot(w$votes, col = "green", main = "Will Smith's Votes", ylab = "vote");
+boxplot(d$votes, col = "purple", main = "Denzel Washington's Votes", ylab = "vote");
+
+```
+
+While Will Smith's votes average around 1e+05 votes per movie, there are some outliers that show some movies are voted higher than the median. Denzel Washington's votes averaged around a little less than 1e+05 but cap off at around 4e+05 while Will Smith's cap off around 5e+05.
+
+```{r, mychunk-boxplots5, message = FALSE}
+boxplot(w$rating, col = "green", main = "Will Smith's Ratings", ylab = "rating");
+boxplot(d$rating, col = "purple", main = "Denzel Washington's Ratings", ylab = "rating");
+
+```
+
+Both Will Smith and Denzel Washington have an even amount of ratings. This might conclude that they are similar actors even though Denzel Washington has more experience than Will Smith, therefore Will Smith could be considered more talented from a ranking sense.
+
+```{r, mychunk-boxplots6, message = FALSE}
+boxplot(w$metacritic, col = "green", main = "Will Smith's Metacritic", ylab = "metacritic");
+boxplot(d$metacritic, col = "purple", main = "Denzel Washington's Metacritic", ylab = "metacritic");
+
+```
+
+The metacritic score for Will Smith averages around 50 while there is an outlier of almost 0. As for Denzel Washington, he had an average score of about 55 ~ 60 while there was also an outlier of almost 0. Both actors have done extremely well overall, but there has also been movies that did not get the best metacritic score as well.
+
+```{r, mychunk-boxplots7, message = FALSE}
+boxplot(w$minutes, col = "green", main = "Will Smith's Movie Lengths (Minutes)", ylab = "minute");
+boxplot(d$minutes, col = "purple", main = "Denzel Washington's Movie Lengths (Minutes)", ylab = "minute");
+
+```
+
+Both Will Smith and Denzel Washington have both had a median of around 110-120 minutes per movie. Although there has been similar shorter and longer movies for both actors, the average amount of minutes in a movie is around 110-120 minutes.

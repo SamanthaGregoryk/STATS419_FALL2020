@@ -1,0 +1,46 @@
+---
+title: 'Notebook for Project 01'
+output:
+  html_document:
+    df_print: paged
+    toc: true
+    toc_float: true
+    toc_depth: 4
+    fig_caption: true
+    number_sections: true
+my-var: "monte"  # https://bookdown.org/yihui/rmarkdown/html-document.html
+---
+
+You will need to populate this notebook based on the idea of "zero to hero" discussed as Data Provenance.
+
+You will have a data set coming in.
+
+You need to formulate some initial Research Questions that would interest you.  The power of "one" suggests there is an overall research question that may have sub-questions.
+
+- e.g., Body Proportions and Artistic Renderings
+- e.g., NBA Basketball Players vs Our Sample
+- e.g., Studies of Covariates on various aspects of the body measurements
+
+Notice the above are three example topics to be discovered, not an actual research question with sub-questions.  Given the data (and possibly external auxiliary data), what would you enjoy researching?  What would you find intriguing?
+
+```{r, chunk-rgl-example}
+
+# EASTER
+
+library(rgl);
+
+# Something like this, but scaled, not animated, and in 3-D:  
+# http://md5.mshaffer.com/WSU_STATS419/_images_/stick_figure.gif
+
+```
+
+[+5 EASTER]  Using RGL or some other 3-D plotting tool, build a stick-figure based on your individual body measurements.  We assume the x-axis starts at the center of the eyes and moves laterally: looking right to the end of your outstretched fingertips is one direction; looking left to the end of your outstretched fingertips in another direction.  The y-axis would be the vertical axis from your feet to your head.  The z-axis would be forward-backward with zero being directly between your two feet (placed 'arm-pit' width apart), half of your shoe size being in the positive direction, the other half in the negative direction.  We could imaging z=0 running directly through your body (kinda like your spine and through your head).  Use line segments to connect parts, and a large point (or circle) where segments connect.  Use a rectangularish-shape for the head if a 3-D ellipsoid is too difficult).
+
+https://en.wikipedia.org/wiki/Anatomical_terms_of_location
+
+- x: lateral (right/left)
+- y: superior/inferior
+- z: anterior/posterior
+
+
+

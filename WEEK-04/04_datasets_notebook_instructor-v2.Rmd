@@ -1,0 +1,802 @@
+---
+title: 'R Notebook sandbox: Assignment "Datasets" (10 points) Revisited'
+output:
+  html_document:
+    df_print: paged
+    toc: true
+    toc_float: true
+    toc_depth: 4
+    fig_caption: true
+    number_sections: true
+my-var: "monte"  # https://bookdown.org/yihui/rmarkdown/html-document.html
+---
+
+
+
+```{r,mychunk-common-include,message=FALSE}
+library(devtools);
+my.source = 'local';
+local.path = "C:/_git_/WSU_STATS419_FALL2020/";
+local.data.path = "R:/WSU_STATS419_FALL2020/";
+source( paste0(local.path,"functions/libraries.R"), local=T );
+
+install_github("MonteShaffer/humanVerseWSU/humanVerseWSU");
+library(humanVerseWSU); # if your functions have the same name as the humanVerseWSU functions, there may be a collision ...  order of sourcing/library (which comes first, second, third, etc.) matters.
+```
+
+
+# Matrix
+
+Create the "rotate matrix" functions as described in lectures.  Apply to the example "myMatrix".
+
+```{r,mychunk-matrix-include,message=FALSE}
+source( paste0(local.path,"functions/functions-matrix.R"), local=T );
+
+
+myMatrix = matrix ( c (
+											1, 0, 2,
+											0, 3, 0,
+											4, 0, 5
+											), nrow=3, byrow=T);
+
+# dput(myMatrix); # useful
+
+```
+
+
+```{r,mychunk-matrix-demo}
+
+humanVerseWSU::transposeMatrix(myMatrix);
+rotateMatrix90(myMatrix);  # clockwise ... 
+rotateMatrix180(myMatrix);
+rotateMatrix270(myMatrix);
+
+# rotateMatrix(mat,a) ### one function using a switch statement ...
+
+
+```
+
+
+
+
+# IRIS
+Recreate the graphic for the IRIS Data Set using R.  Same titles, same scales, same colors.  See: https://en.wikipedia.org/wiki/Iris_flower_data_set#/media/File:Iris_dataset_scatterplot.svg
+
+```{r,mychunk-iris-demo}
+
+# plot function here ...
+plot(iris);
+plot(iris[,-5]);
+plot(iris[,-5],col=iris[,5]);
+levels(iris[,5]);
+myColors = c("red","green","blue");
+plot(iris[,-5],col=myColors);
+
+species = as.numeric(iris[,5]);
+
+as.numeric(iris[,5]);  # map to myColors ...
+
+species = as.numeric(iris[,5]);
+myColors[species]
+
+plot(iris[,-5],col=myColors[species]);
+
+plot(iris[,-5],col=myColors[species], pch=19);
+
+myColors = c("red","green","blue");
+mySymbols = c(15, 16, 18);
+species = as.numeric(iris[,5]);
+plot(iris[,-5],col=myColors[species], pch=mySymbols[species]);
+
+
+legend("bottomright",unique(species),col=myColors[species],pch=mySymbols[species]);  # why is legend not working?
+
+
+
+
+# final answer using plot
+myColors = c("red","green","blue");
+mySymbols = c(19, 19, 19);
+species = as.numeric(iris[,5]);
+plot( iris[,-5],
+      col=myColors[species], 
+      pch=mySymbols[species],
+      main="Iris Data (red=setosa,green=versicolor,blue=virginica)"
+    );
+# we need to add a caption into our final answer of our writeup ...  ALWAYS ...
+
+
+
+
+library(ggplot2);
+ggplot( iris, 
+        aes(x=Sepal.Length, 
+        color=Species)
+        ) 
+        + geom_density( )
+        + ggtitle("Main title")
+        
+
+
+ggplot(data = iris, aes( x = Sepal.Length, y = Sepal.Width,shape = Species, color = Species)) + geom_point()
+
+# concept of scatterplot is different in ggplot than in plot
+# this creates confusion, increases challenges to work effectively
+
+# please share your solutions to this approach if it interests you?
+# it doesn't interest me.  It is another entire syntax structure, I have
+# already learned "plot" very well.  So if you want to choose to be an 
+# expert in this, so be it.
+
+
+
+
+
+# final answer using ggplot
+
+# I don't have a final answer personally here, this approach doesn't interest me.
+# https://stackoverflow.com/questions/7721262/
+# I agree with the Fredericko camp ... you may not and that is okay.
+# Suggesting ggplot2 for "better graphics in R" is just so wrong. The standard R plotting functions have way more potential. – Federico Giorgi Mar 20 '14 at 5:52
+
+
+
+library(dplyr);
+library(tibble);
+
+library(highcharter);
+#install.packages("highcharter", dependencies=TRUE);
+
+
+hcmap("https://code.highcharts.com/mapdata/countries/in/in-all.js")%>%
+  hc_title(text = "India")
+mapdata <- get_data_from_map(download_map_data("https://code.highcharts.com/mapdata/countries/in/in-all.js"))
+
+glimpse(mapdata);
+str(mapdata);
+# unique(mapdata$`hc-group`);  # notice the "-" makes it a challenge to access...
+
+
+#population state wise
+pop = as.data.frame(c(84673556, 1382611, 31169272, 103804637, 1055450, 25540196, 342853, 242911, 18980000, 1457723, 60383628, 25353081, 6864602,
+12548926, 32966238, 61130704, 33387677, 64429, 72597565, 112372972, 2721756, 2964007, 1091014, 1980602, 41947358, 1244464,
+27704236, 68621012, 607688, 72138958, 3671032, 207281477, 10116752,91347736))
+
+state= mapdata%>%
+  select(`hc-a2`)%>%
+  arrange(`hc-a2`)
+
+State_pop = as.data.frame(c(state, pop))
+names(State_pop)= c("State", "Population")
+
+# why will hcmap not cache this?
+hcmap("https://code.highcharts.com/mapdata/countries/in/in-all.js", data = State_pop, value = "Population",
+      joinBy = c("hc-a2", "State"), name = "Fake data",
+      dataLabels = list(enabled = TRUE, format = '{point.name}'),
+      borderColor = "#FAFAFA", borderWidth = 0.1,
+      tooltip = list(valueDecimals = 0))
+
+# how hard is it to get real data ....
+# can we use "zoom" option of highcharts?
+# are there free web-page hosting 
+# http://md5.mshaffer.com/WSU_STATS419/cleanup.txt
+# setup FTP to md5.mshaffer.com
+# how to change where these are stored?
+
+# the current highcharts wrapper `highcharter` can only be as good as the 
+# developer ...
+# it builds the extra highcharts code in every instance, that should be stored i a local place 
+# it should build an options setup, so it can be developed as such ... 
+# JSON imports options, sets up data, more transparent ... 
+# use codepen or whatever to build the structure, apply as a JSON object and render ...
+# pure javascript or JQUERY ...
+# function buildHighChartsFromDataAndOptions(df, options)
+# function buildOpenStreetMaps(df, options)
+
+# Publish within RStudio to a public location ... 
+# what a mess ... they have collapse all "human-readable" storage structures
+# you can't modify it further ...
+# notice the vector of (x,y) coordinates to draw a polygon bounding box for each region ...
+
+# viewer is a webpage ... how would it look in plain RGUI ...
+# many highcharts are zoomable ... might be a parameter 
+
+
+ # it costs about $500 one-time for a single developer ...
+ # I have bought it before ... it is a very nice tool and developer team
+ # I have had exchanges with CEO in the forums, and have contributed code
+ # to generic "highcharts" not highcharter
+# webpage
+ # so how do we put a HTML file as an interactive element in a webpage
+
+# JSON PRETTY PRINT USING R
+
+
+# In such scenarios, i follow Step1.require(jsonlite); json2 <- fromJSON(my_output, flatten = TRUE); Step2.library(dplyr); df <- as_data_frame(json2); – parth Jul 10 '17 at 10:15 
+
+# https://stackoverflow.com/questions/45153312/parsing-complex-json-into-dataframe-using-r
+
+  
+
+
+# final answer using highcharter
+# Possibly rewrite as highchartsR library ...
+
+```
+
+Sentences:  [Right 2-3 sentences concisely defining the IRIS Data Set.  Maybe search KAGGLE for a nice template.  Be certain the final writeup are your own sentences (make certain you modify what you find, make it your own, but also cite where you got your ideas from).  NOTE:  Watch the video, Figure 8 has a +5 EASTER EGG.]
+
+
+
+```{r,mychunk-iris-describe}
+
+# https://www.kaggle.com/arshid/iris-flower-dataset
+  # A common misconception is that this is the R.A. Fisher dataset of 1936.  
+  # I found the original dataset source, and that was a reading we had.
+  # Kaggle is a useful resource, at times.  They have "notebooks" where people
+  #   use python or R (or other language) to do analyses.
+
+  # Python is an easier-syntaxed language, and many STATS package ideas
+  #   are being "rewritten" in Python.  R is the original STATS package lang.
+
+  # Python has some pre-built tools to get you started, such as ComputerVision
+  
+
+  # Useful on a project like this: 
+      # https://www.kaggle.com/c/passenger-screening-algorithm-challenge/notebooks
+  # I used R to play with this dataset:  https://github.com/MonteShaffer/dhsEI
+  # I also wrote some python code, somewhere.
+
+  # This is a hard multi-variate data problem.  
+  #   CS people call it "machine-learning"
+
+  # https://www.youtube.com/watch?v=y-ZCgbJVdBI
+  #   This video does show something that looks like the raw scans, 
+  #     the raw scan is grabbed at 16 or more angles (spinning around your body)
+  #     TSA has 17 zones (omitting the head for some reason) that they are 
+  #     looking for contraband ... https://bit.ly/33DNX28
+
+  # My take from doing research:  they don't really work
+
+  # Based on our "measure" project, they could easily measure an individual
+  #   using some 3-D trigonmetry ... pixels convert to feet/cm
+  #   with the exception of foot-length, they could capture your
+  #   body profile easily.
+
+```
+
+# Personality
+
+## Cleanup RAW
+Import "personality-raw.txt" into R.  Remove the V00 column.  Create two new columns from the current column "date_test":  year and week. Stack Overflow may help:  https://stackoverflow.com/questions/22439540/how-to-get-week-numbers-from-dates ... Sort the new data frame by YEAR, WEEK so the newest tests are first ... The newest tests (e.g., 2020 or 2019) are at the top of the data frame.  Then remove duplicates using the unique function based on the column "md5_email".  Save the data frame in the same "pipe-delimited format" ( | is a pipe ) with the headers.  You will keep the new data frame as "personality-clean.txt" for future work (you will not upload it at this time).  In the homework, for this tasks, report how many records your raw dataset had and how many records your clean dataset has.
+
+```{r,mychunk-personality-hackathon}
+
+# hackathon form:  http://md5.mshaffer.com/WSU_STATS419/cleanup.txt
+
+#################################
+# hackathon
+
+# working directory is good-to-go
+
+myFile = paste0(local.path,"datasets/personality/personality-raw.txt");
+
+myData = read.csv(myFile,header=T,sep="|");
+
+
+
+## subtask #1 (remove a column)
+myData$V00 = NULL;  ## one method
+myData["V00"] = NULL; ## equivalent ...  ****
+
+#idx = which( names(myData)=="V00" );  ## second method 
+#myData = myData[,-c(idx)];
+
+## subtask #2 (dates)  ... remove a column ...
+
+
+
+
+#date.obj = strptime("5/17/2007 10:15", format="%m/%d/%Y %H:%M");
+#my.year = as.numeric( strftime(date.obj, format='%Y') );
+#my.week = as.numeric( strftime(date.obj, format='%W') );
+
+myDate.obj = strptime(myData$date_test, format="%m/%d/%Y %H:%M");
+
+myDate.obj.year = as.numeric( strftime(myDate.obj, format='%Y') );
+myDate.obj.week = as.numeric( strftime(myDate.obj, format='%W') );
+
+myData$year = myDate.obj.year;
+myData$week = myDate.obj.week;
+
+date.idx = which( names(myData)=="date_test" );
+
+
+
+## remove date_test
+myData["date_test"] = NULL;
+
+# dim not length
+df.dim = dim(myData); 
+df.pos = df.dim[2]; 
+
+which( names(myData)=="year" );
+which( names(myData)=="week" );
+
+myData = myData[, c(1,62,63, 2:61)];
+
+# date is at beginning
+# 1, ... everything else
+# date is after first
+# 1:(date.idx-1)
+
+if(date.idx == 1)
+	{
+	reorder = c( (df.pos-1):df.pos, 2:(df.pos-2) );
+	} else  {
+		      reorder = c( 1:(date.idx-1), (df.pos-1):df.pos, 2:(df.pos-2) );
+		      }
+
+myData = myData[, reorder];
+
+myTest = myData[1:20,1:5];
+
+myTest[ order(myTest[,3]), ];
+myTest[ order(-myTest[,3]), ];
+
+myData.sorted = myData[ order(-myData[,date.idx],-myData[,(1+date.idx)]), ];
+
+head(myData.sorted[,1:5]);
+
+u = unique( myData.sorted["md5_email"] );
+
+myData.cleansed = myData.sorted[!duplicated(myData.sorted["md5_email"]), ];
+
+ dim(myData.sorted);
+ dim(myData.cleansed);
+
+# newFile = paste0(local.path,"datasets/personality/personality-clean.txt");
+# write.table( myData.cleansed , file=newFile, quote=FALSE, col.names=TRUE, row.names=FALSE, sep="|");
+
+
+```
+
+
+```{r,mychunk-personality-v1}
+
+# v1 of humanVerseWSU form:  http://md5.mshaffer.com/WSU_STATS419/cleanup2.txt
+
+myFile = paste0(local.path,"datasets/personality/personality-raw.txt");
+df = read.csv(myFile,header=T,sep="|");
+
+
+  df = removeColumnsFromDataFrame(df, "V00");
+
+date.formats = c("year","week","day");
+   vec = df$date_test;
+year = convertDateStringToFormat(vec,"%Y","%m/%d/%Y %H:%M");
+week = convertDateStringToFormat(vec,"%W","%m/%d/%Y %H:%M");
+day  = convertDateStringToFormat(vec,"%j","%m/%d/%Y %H:%M");
+   newcols = cbind(year,week,day);
+     colnames(newcols) = date.formats;
+
+ndf = replaceDateStringWithDateColumns(df,"date_test",newcols);
+ndf = sortDataFrameByNumericColumns(ndf, date.formats, "DESC");
+ndf = removeDuplicatesFromDataFrame(ndf, "md5_email");
+
+ndf;
+ 
+dim(df);  # 838
+dim(ndf); # 678
+
+# newFile = paste0(local.path,"datasets/personality/personality-clean.txt");
+# write.table( ndf , file=newFile, quote=FALSE, col.names=TRUE, row.names=FALSE, sep="|");
+
+
+
+# my latest version of these functions will simplify the "date-manipulation" 
+#     to just one function
+```
+
+
+# Variance and Z-scores 
+
+Write functions for doSummary and sampleVariance and doMode ... test these functions in your homework on the "monte.shaffer@gmail.com" record from the clean dataset.  Report your findings.  For this "monte.shaffer@gmail.com" record, also create z-scores.  Plot(x,y) where x is the raw scores for "monte.shaffer@gmail.com" and y is the z-scores from those raw scores.  Include the plot in your assignment, and write 2 sentences describing what pattern you are seeing and why this pattern is present.
+
+```{r,mychunk-variance-intro}
+
+library(humanVerseWSU);
+?doStatsSummary
+
+# I ended up renaming my function doStatsSummary, I wanted to replace the
+#   limited data found in ?summary for some (not sum) time.
+
+x.norm = rnorm(100,0,1);
+s.norm = doStatsSummary ( x.norm );
+str(s.norm);  # mode is pretty meaningless on this data
+
+x.unif = runif(100,0,1);
+s.unif = doStatsSummary ( x.unif );
+str(s.unif);  # mode is pretty meaningless on this data
+
+# https://raw.githubusercontent.com/MonteShaffer/humanVerseWSU/master/humanVerseWSU/R/functions-stats.R
+# https://raw.githubusercontent.com/MonteShaffer/humanVerseWSU/master/humanVerseWSU/R/functions-vector.R
+
+#################################################################
+
+doStatsSummary = function(x)
+	{
+	result = list();
+		result$length = length(x);
+	xx = stats::na.omit(x);
+		result$length.na = length(x) - length(xx);
+		result$length.good = length(xx);
+	result$mean = mean(xx);
+	result$mean.trim.05 = mean(xx, trim=0.05);
+	result$mean.trim.20 = mean(xx, trim=0.20);
+
+	result$median = stats::median(xx);
+	result$MAD = stats::mad(xx);
+	result$IQR = stats::IQR(xx);
+	result$quartiles = stats::quantile(xx, prob=c(.25,.5,.75));
+	result$deciles = stats::quantile(xx, prob=seq(0.1,0.9,by=0.1) );
+	result$centiles = stats::quantile(xx, prob=seq(0.01,0.99,by=0.01) );
+
+	result$median.weighted = matrixStats::weightedMad(xx);
+	result$MAD.weighted = matrixStats::weightedMedian(xx);
+
+	result$max = max(xx);
+	result$min = min(xx);
+	result$range = result$max - result$min;
+	result$xlim = range(xx);
+
+	result$max.idx = whichMax(x);
+	result$min.idx = whichMin(x);
+
+	result$mode = result$freq.max = doMode(x);  # elements with highest frequency
+	result$which.min.freq = doModeOpposite(x);
+
+	result$ylim = c( freqMin(xx), freqMax(xx) );
+
+	# you could later get indexes of each mode(freq.max)/freq.min using findAllIndexesWithValueInVector
+
+	result$sd = stats::sd(xx);
+	result$var = stats::var(xx);
+
+	result$var.naive = doSampleVariance(x,"naive");
+	result$var.2step = doSampleVariance(x,"2step");
+
+
+	## normality
+	result$shapiro = stats::shapiro.test(xx);
+	result$shapiro.is.normal = list("0.10" = isTRUE(result$shapiro$p.value > 0.10), "0.05" = isTRUE(result$shapiro$p.value > 0.05), "0.01" = isTRUE(result$shapiro$p.value > 0.01) );
+
+	result$outliers.z = findOutliersUsingZscores(x);
+	result$outliers.IQR = findOutliersUsingIQR(x);
+
+	#result$z = calculateZscores(x);
+
+	result;
+  }
+
+#################################################################
+
+doSampleVariance = function(x, method="two-pass")
+	{
+	x = stats::na.omit(x);
+	if(method=="naive")
+		{
+		n = 0;
+		sum = 0;
+		sum2 = 0;
+
+		for(i in 1:length(x))  ## stats::na.omit(x)
+			{
+			n = n + 1;
+			sum = sum + x[i];
+			sum2 = sum2 + x[i]*x[i];
+			}
+
+		if(n < 2) { return(NULL);} #
+			x.bar = sum/n;
+			s.var = (sum2 - (sum*sum)/n)/(n-1);
+
+		} else	{
+				# two-pass algorithm # testing
+				n = sum = sum2 = 0;
+				## first pass
+				for(i in 1:length(x))  ## stats::na.omit(x)
+					{
+					n = n + 1;
+					sum = sum + x[i];
+					}
+		if(n < 2) { return(NULL);} #
+				x.bar = sum/n;
+				## second pass
+				for(i in 1:length(x))  ## stats::na.omit(x)
+					{
+					deviation = x[i] - x.bar;
+					sum2 = sum2 + deviation * deviation;
+					}
+				s.var = sum2/(n-1);
+				}
+
+		s.sd = sqrt(s.var);
+	list("x.bar"=x.bar,"s.var"=s.var,"s.sd"=s.sd);
+	}
+
+#################################################################
+
+doMode = function(x) # alias ?
+	{
+	whichMaxFreq(x);
+  }
+
+
+whichMaxFreq = function(x)  # doMode
+	{
+	x.table = as.data.frame( table(x) );
+		freq.max = max( x.table$Freq );
+	x.list = x.table[x.table$Freq==freq.max,];
+	xs = as.numeric( as.vector (x.list$x) );
+	xs;
+	}
+
+# R does not have a "mode" function built in that will capture ties.
+#   This function will.
+# In the process, I wrote other functions that are also not robust in R.
+# For example ?which.max versus my function ?whichMax
+
+which.max( c(87, presidents[1:30], 87) );
+whichMax( c(87, presidents[1:30], 87) );
+
+## a function can also be referenced using class::method notation
+
+base::which.max( c(87, presidents[1:30], 87) );
+humanVerseWUS::whichMax( c(87, presidents[1:30], 87) );
+
+# typos ... 
+humanVerseWSU::whichMax( c(87, presidents[1:30], 87) );
+
+## this will prevent confusion if functions have the same name (in different packages)
+
+#################################################################
+
+# not a requirement for your homework, but here is a function that will do it.
+calculateZscores = function(x, x.bar=NULL, s.hat=NULL)
+	{
+  if(is.numeric(x.bar) && is.numeric(s.hat)) { return ((x - x.bar) / s.hat);}
+  # maybe throw a warning if one is null, but not the other
+  if( (is.null(x.bar) + is.null(s.hat)) == 1)
+      {
+      warning("Only one value was entered for x.bar / s.hat ... Computing these values instead.")
+      }
+
+
+	dsv = doSampleVariance(x);
+
+	x.bar = dsv$x.bar;
+	s.hat = dsv$s.sd;
+
+	if(is.null(s.hat)) { return (NULL); }  # we take care of division by zero in our custom sampleVarianceFunction
+
+	(x - x.bar) / s.hat;
+	}
+
+```
+
+Application of z-score
+
+```{r,mychunk-apply-z-score}
+
+# the built in function ?scale you should find useful.
+# a z-score is taken on a vector of data requires x.bar and s.hat
+# generally, we assume x.bar and s.hat comes from the vector of data. 
+# It doesn't have to.
+
+library(digest);
+md5_monte = digest("monte.shaffer@gmail.com", algo="md5");  # no workee???
+md5_monte = "b62c73cdaf59e0a13de495b84030734e";
+
+# jQuery [b62c73cdaf59e0a13de495b84030734e]     https://www.jqueryscript.net/demo/MD5-Hash-String/
+# Javascript [b62c73cdaf59e0a13de495b84030734e] http://md5.mshaffer.com/
+# PHP     [b62c73cdaf59e0a13de495b84030734e]    https://onlinegdb.com/rJUGCTkrw
+# Python enthusiasts:  I recommend WingIDE  ... https://wingware.com/
+# [+5 investigate the issue... write a Python function that passes in a string
+#   and returns a md5 string, write an onlinegdb.com example for C,
+#   and write an onlinegdb.com example for C++ ... summarize your findings.]
+
+row = ndf[ndf$md5_email == md5_monte, ];
+vec.start = getIndexOfDataFrameColumns(row,"V01");  # 5
+vec.end = getIndexOfDataFrameColumns(row,"V60"); # 64
+
+vec = as.numeric( row[vec.start:vec.end] );  # vector functions require "vector form"
+# recall the concept of a vector basis? (e.g., basis of vector space)
+# linear combinations of this basis?
+
+
+vdf = as.data.frame( t(vec) );  # dim(vdf) tells me to transpose it.
+  myRows = c("raw");
+
+z.vec = calculateZscores(vec);
+  vdf = rbind(vdf,z.vec);     myRows=c(myRows,"z-scores");
+
+z.vec30 = standardizeToFactor(vec, 30);
+  vdf = rbind(vdf,z.vec30);  myRows=c(myRows,"30x");
+
+z.vecmin = standardizeToMin(vec);  # like z-scores, should rewrite to allow it be passed in, by default it computes
+  vdf = rbind(vdf,z.vecmin);  myRows=c(myRows,"min");
+
+z.vecmax = standardizeToMax(vec);  # like z-scores, should rewrite to allow it be passed in, by default it computes
+  vdf = rbind(vdf,z.vecmax);  myRows=c(myRows,"max");
+  
+z.vecN = standardizeToN(vec);  # like z-scores, should rewrite to allow it be passed in, by default it computes
+  vdf = rbind(vdf,z.vecN);  myRows=c(myRows,"N");
+
+z.vecSum = standardizeToSum (vec);  # like z-scores, should rewrite to allow it be passed in, by default it computes
+  vdf = rbind(vdf,z.vecSum);  myRows=c(myRows,"Sum");
+
+z.vecBound = standardizeFromOneRangeToAnother(vec, c(0,1) );  # like z-scores, should rewrite to allow it be passed in, by default it computes
+  vdf = rbind(vdf,z.vecBound);  myRows=c(myRows,"[0,1]");
+
+rownames(vdf) = myRows;
+
+```
+
+
+## Variance
+### Naive
+
+```{r,mychunk-variance-naive}
+# https://raw.githubusercontent.com/MonteShaffer/humanVerseWSU/master/humanVerseWSU/R/functions-standardize.R
+
+v.norm = doSampleVariance(x.norm, "naive");
+
+
+# if x is really small
+vsmall.df = as.data.frame( t(unlist(v.norm)) );
+
+x.small = x.norm;
+for(i in 1:20)
+  {
+  # every loop make it 1000 times smaller
+  # notice I am looping over "i" but not using it.
+  x.small = standardizeToFactor(x.small, 1/1000);
+  v.small = doSampleVariance(x.small, "naive");
+    v.row = t(unlist(v.small));
+  vsmall.df = rbind(vsmall.df, v.row);
+  }
+
+vsmall.df;
+
+
+
+# if x is really big
+vlarge.df = as.data.frame( t(unlist(v.norm)) );
+
+x.large = x.norm;
+for(i in 1:20)
+  {
+  # every loop make it 1000 times larger
+  # notice I am looping over "i" but not using it.
+  x.large = standardizeToFactor(x.large, 1000);
+  v.large = doSampleVariance(x.large, "naive");
+    v.row = t(unlist(v.large));
+  vlarge.df = rbind(vlarge.df, v.row);
+  }
+
+vlarge.df;
+
+
+## from these two experiments it looks okay!
+
+## CS purists say it will fail eventually 
+## maybe I have to use a smaller n to demo failure?
+
+## examine the function , the failure point is:    sum2 = sum2 + x[i]*x[i];
+## [+5 Easter to first x-vec of 100 numbers that causes "naive" to fail!]
+## by fail, I mean the "two-pass" approach and built ?sd or ?var function
+## shows something entirely different ...
+
+```
+
+#### Problems with this approach
+### Traditional Two Pass
+
+```{r,mychunk-variance-2pass}
+
+v2.norm = doSampleVariance(x.norm, "two-pass");
+v2b.norm = doSampleVariance(x.norm);  # default value is "two-pass" in the function
+v2c.norm = doSampleVariance(x.norm, "garblideljd=-gook"); # if logic defaults to "two-pass"
+
+unlist(v2.norm);
+unlist(v2b.norm);
+unlist(v2c.norm);
+
+```
+
+## Z-Scores
+
+# Will vs Denzel
+```{r,mychunk-imdb-include,message=FALSE}
+#source( paste0(local.path,"functions/functions-imdb.R"), local=T );
+
+# some of you were having issues with the IMDB web connection.
+# I was annoyed rvest doesn't cache ...
+# here is a hack ... using dput
+
+# http://md5.mshaffer.com/WSU_STATS419/denzel
+# http://md5.mshaffer.com/WSU_STATS419/will
+
+# I will be building out a IMDB dataset for our use to perform multivariate analyses
+# without relying on IMDB ...
+
+```
+
+Compare Will Smith and Denzel Washington. [See 03_n greater 1-v2.txt for the necessary functions and will-vs-denzel.txt for some sample code and in DROPBOX: \__student_access__\unit_01_exploratory_data_analysis\week_02\imdb-example ]  You will have to create a new variable $millions.2000 that converts each movie's $millions based on the $year of the movie, so all dollars are in the same time frame.  You will need inflation data from about 1980-2020 to make this work.
+
+
+## Will Smith
+```{r,mychunk-will, fig.cap = c("Will Smith scatterplot: IMDB(2020)", "Will Smith boxplot raw millions: IMDB(2020)")}
+nmid = "nm0000226";
+ 	#will = grabFilmsForPerson(nmid);  ## can we source for dput?
+  source_url("http://md5.mshaffer.com/WSU_STATS419/will");  # look at syntax
+                                                            # will = data;
+
+ 	plot(will$movies.50[,c(1,6,7:10)]);
+  	boxplot(will$movies.50$millions);
+		widx =  which.max(will$movies.50$millions);
+	will$movies.50[widx,];
+		summary(will$movies.50$year);  # bad boys for life ... did data change?
+		
+```
+## Denzel Washington
+```{r,mychunk-denzel}
+nmid = "nm0000243";
+  # source_url("https://raw.githubusercontent.com/MonteShaffer/WSU_STATS419_FALL2020/master/functions/functions-imdb.R");
+ 	#denzel = grabFilmsForPerson(nmid);  ## can we source for dput?
+  source_url("http://md5.mshaffer.com/WSU_STATS419/denzel");  # look at syntax
+                                                            # denzel = data;
+
+ 	plot(denzel$movies.50[,c(1,6,7:10)]);
+  	boxplot(denzel$movies.50$millions);
+		didx =  which.max(denzel$movies.50$millions);
+	denzel$movies.50[didx,];
+		summary(denzel$movies.50$year);
+		
+```
+
+## BoxPlot of Top-50 movies using Raw Dollars
+
+```{r,mychunk-boxplot-raw}
+par(mfrow=c(1,2));
+	boxplot(will$movies.50$millions, main=will$name, ylim=c(0,360), ylab="Raw Millions" );
+	boxplot(denzel$movies.50$millions, main=denzel$name, ylim=c(0,360), ylab="Raw Millions" );
+	
+	par(mfrow=c(1,1));
+		
+```
+
+## Side-by-Side Comparisons
+Build side-by-side box plots on several of the variables (including #6) to compare the two movie stars.  After each box plot, write 2+ sentence describing what you are seeing, and what conclusions you can logically make.  You will need to review what the box plot is showing with the box portion, the divider in the box, and the whiskers.
+
+```{r,mychunk-matrix-demo}
+
+humanVerseWSU::transposeMatrix(myMatrix);
+rotateMatrix90(myMatrix);  # clockwise ... 
+rotateMatrix180(myMatrix);
+rotateMatrix270(myMatrix);
+
+# rotateMatrix(mat,a) ### one function using a switch statement ...
+
+
+```
+
+
+### Adjusted Dollars (2000)
+### Total Votes  (Divide by 1,000,000)
+### Average Ratings
+### Year?  Minutes?
+### Metacritic (NA values)
+
+
