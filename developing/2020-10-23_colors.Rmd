@@ -1,0 +1,317 @@
+---
+title: 'R Notebook: colors'
+output:
+  html_document:
+    df_print: paged
+    toc: true
+    toc_float: true
+    toc_depth: 4
+    fig_caption: true
+    number_sections: true 
+---
+
+```{r}
+library(devtools);
+path.github = "https://raw.githubusercontent.com/MonteShaffer/humanVerseWSU/master/";
+source_url ( paste0( path.github, "humanVerseWSU/R/functions-colors.R" ) );
+
+```
+<http://md5.mshaffer.com/WSU_STATS419/_NOTEBOOKS_/>
+
+# Colors
+
+Here was a color tool I developed in 2007:
+
+<http://colors.mshaffer.com/>
+
+<http://colors.mshaffer.com/?debug=monte>
+
+I tested it in the latest version of Chrome/Edge, still works ...
+
+
+## Color Palettes in `grDevices`
+
+### Base Colors
+
+There are several color options.  The default colors are stored in the functions `colors()`
+
+These are mostly `x11` colors: <https://en.wikipedia.org/wiki/X11_color_names>
+
+```{r}
+
+library(grDevices);
+
+base.colors = colors();
+
+colors.df = as.data.frame( cbind( (1:length(base.colors)), base.colors) );
+
+colors.df;
+
+  displayColorOptions(base.colors);
+
+```
+
+### `rainbow`
+
+The code below generates 40 contiguous colors using the `?rainbow` function.  These values are hexadecimal RGB format <https://www.w3schools.com/colors/colors_hexadecimal.asp>.
+```{r}
+
+colors.rainbow = rainbow(40, s = 0.6, v = 0.75);
+  displayColorOptions(colors.rainbow, ncol=4);
+
+
+```
+
+
+
+#### Transparency: `rainbow`
+
+The true RGB color has another element appended, "alpha transparency" also in hexadecimal form, providing a RGBa color <https://www.w3schools.com/Css/css_colors_rgb.asp>.
+
+```{r}
+
+colors.rainbow = rainbow(40, s = 0.6, v = 0.75,
+                      alpha=0.5);
+  displayColorOptions(colors.rainbow, ncol=4);
+
+
+```
+
+
+
+### `heat.colors`
+
+The code below generates 40 contiguous colors using the `?heat.colors` function.  
+
+```{r}
+
+colors.heat.colors = heat.colors(40);
+  displayColorOptions(colors.heat.colors, ncol=4);
+
+
+```
+
+#### Transparency: `heat.colors`
+
+The code below generates 40 contiguous colors using the `?heat.colors` function.  
+
+```{r}
+
+colors.heat.colors = heat.colors(40, alpha=0.5);
+  displayColorOptions(colors.heat.colors, ncol=4);
+
+
+```
+
+
+
+### `terrain.colors`
+
+The code below generates 40 contiguous colors using the `?terrain.colors` function.  
+
+```{r}
+
+colors.terrain.colors = terrain.colors(40);
+  displayColorOptions(colors.terrain.colors, ncol=4);
+
+
+```
+
+
+#### Transparency: `terrain.colors`
+
+The code below generates 40 contiguous colors using the `?terrain.colors` function.  
+
+```{r}
+
+colors.terrain.colors = terrain.colors(40, alpha=0.5);
+  displayColorOptions(colors.terrain.colors, ncol=4);
+
+
+```
+
+
+
+### `topo.colors`
+
+The code below generates 40 contiguous colors using the `?topo.colors` function.  
+
+```{r}
+
+colors.topo.colors = topo.colors(40);
+  displayColorOptions(colors.topo.colors, ncol=4);
+
+
+```
+
+
+#### Transparency: `topo.colors`
+
+The code below generates 40 contiguous colors using the `?topo.colors` function.  
+
+```{r}
+
+colors.topo.colors = topo.colors(40, alpha=0.5);
+  displayColorOptions(colors.topo.colors, ncol=4);
+
+
+```
+
+
+### `cm.colors`
+
+The code below generates 40 contiguous colors using the `?cm.colors` function.  
+
+```{r}
+
+colors.cm.colors = cm.colors(40);
+  displayColorOptions(colors.cm.colors, ncol=4);
+
+
+```
+
+
+#### Transparency: `cm.colors`
+
+The code below generates 40 contiguous colors using the `?cm.colors` function.  
+
+```{r}
+
+colors.cm.colors = cm.colors(40, alpha=0.5);
+  displayColorOptions(colors.cm.colors, ncol=4);
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+### Color Palettes using `hcl.colors`
+
+
+```{r}
+
+hcl.palette.list = hcl.pals();
+
+as.data.frame( hcl.palette.list );
+
+for(i in 1:length(hcl.palette.list))
+  {
+  hcl = hcl.palette.list[i];
+  colors.hcl.colors = hcl.colors(40, palette=hcl);
+  
+  print(paste0("Palette: ", hcl));
+    displayColorOptions(colors.hcl.colors, ncol=4);
+  print(paste0("   ---> alpha: ", 0.5));
+  colors.hcl.colors = hcl.colors(40, palette=hcl,
+                                        alpha=0.5);
+    displayColorOptions(colors.hcl.colors, ncol=4);
+  }
+
+```
+
+
+
+### Build a color gradient using `colorRampPalette`
+
+You can interpolate a color gradient as well.
+
+```{r}
+
+colvec=c("red","royalblue");
+my.colors = colorsInGradient(40, colvec, FALSE);
+  displayColorOptions(my.colors, ncol=4);
+
+
+colvec=c("red","royalblue","seagreen");
+my.colors = colorsInGradient(40, colvec, FALSE);
+  displayColorOptions(my.colors, ncol=4);
+
+```
+
+### Helper functions
+
+I wrote a few helper functions to manipulate and store colors.
+
+- `displayColorOptions` to display these rectangular summaries of colors.  If rendered as HTML, it would be more useful, as you could copy/paste the code.  I will work on that option.
+
+- `colorsInGradient` is a wrapper for the odd-structured function `colorRampPalette`
+
+- There is a built-in `col2rgb` function that was missing its reciprocal or inverse, so I wrote it as `rgb2col` 
+
+`col2rgb("red");`  and `rgb2col( col2rgb("red") );`  ... useful for grabbing the HEX color scheme from the named scheme
+
+- A lookup tool on the many (600+ colors).  `indexColors` builds the index and `searchColor` can do a lookup based on name (which is unique) or based on hex (which is not necessarily unique, so may return multiple values).  I may use a multi-dimensional distance metric to compute a "fuzzyColorSearch" calling it `findNearestColor`
+
+# Conclusion
+
+Online, you can read about all these special/cool palettes developed by others libraries (e.g.,  "RColorBrewer" or "wesanderson").  There is nothing new or novel in these libraries.  RGB and specifically RGBa are how colors are built in R (and in most user interfaces).  You can do some research, and build your own palette using the information contained herein.  The "pretty colors" are often a function of an "alpha" level of RGBa.  And it is related to the psychological perceptions we have as to why the color is "pretty".
+
+```{r}
+
+# build a custom palette ...
+
+# https://brand.wsu.edu/visual/colors/
+
+colors.list = list();
+colors.list[["monte_shaffer@wsu.edu"]] = list();
+
+colors.list[["monte_shaffer@wsu.edu"]][["crimson"]] = "#981e32";
+colors.list[["monte_shaffer@wsu.edu"]][["crimson-accent"]] = "#c60c30";
+colors.list[["monte_shaffer@wsu.edu"]][["gray"]] = "#5e6a71";
+colors.list[["monte_shaffer@wsu.edu"]][["gray-darker1"]] = "#464e54";
+colors.list[["monte_shaffer@wsu.edu"]][["gray-darker2"]] = "#2a3033";
+colors.list[["monte_shaffer@wsu.edu"]][["gray-black"]] = "#000000";
+colors.list[["monte_shaffer@wsu.edu"]][["gray-lighter1"]] = "#8d959a";
+colors.list[["monte_shaffer@wsu.edu"]][["gray-lighter2"]] = "#b5babe";
+colors.list[["monte_shaffer@wsu.edu"]][["gray-lighter3"]] = "#d7dadb";
+colors.list[["monte_shaffer@wsu.edu"]][["gray-lighter4"]] = "#eff0f1";
+colors.list[["monte_shaffer@wsu.edu"]][["gray-white"]] = "#FFFFFF";
+colors.list[["monte_shaffer@wsu.edu"]][["gray-lighter1"]] = "#8d959a";
+
+
+colors.list[["monte_shaffer@wsu.edu"]][["orange"]] = "#b67233";
+colors.list[["monte_shaffer@wsu.edu"]][["orange-accent"]] = "#f6861f";
+
+colors.list[["monte_shaffer@wsu.edu"]][["green"]] = "#8f7e35";
+colors.list[["monte_shaffer@wsu.edu"]][["green-accent"]] = "#ada400";
+
+colors.list[["monte_shaffer@wsu.edu"]][["blue"]] = "#4f868e";
+colors.list[["monte_shaffer@wsu.edu"]][["blue-accent"]] = "#00a5bd";
+
+colors.list[["monte_shaffer@wsu.edu"]][["yellow"]] = "#c69214";
+colors.list[["monte_shaffer@wsu.edu"]][["yellow-accent"]] = "#ffb81c";
+
+# to practice, build out your own color scheme ... 
+
+mycolors = unlist(colors.list$`monte_shaffer@wsu.edu`);
+
+displayColorOptions(mycolors, showHEX=TRUE, ncol=2);
+
+
+```
+
+When you play with RGB addressable lights in electronics, you can get two types, RGB and RGBw.  The ability to create mixture of light by having 3 or 4 small LEDs light up is the basic function of how light emission works.  Here is a short video clip <https://www.youtube.com/watch?v=DBRJ0KbI1Hk> of an application, which was programmed in embedded C as part of a research grant to develop automated technologies to engage the mind and body of persons with Parkinson's disease <https://www.nsf.gov/awardsearch/showAward?AWD_ID=1819997>.  [We also had a nice punch-detection algorithm that would use the statistic called MAD to perform real-time signal processing.  I will likely document some of that algorithm in a "mastery" notebook.]
+
+Obviously, the color schema presented herein is a function of light emission (which is how computers operate) and the aesthetics would be different for a paint-schema for color, as that is a function of how light reflects off a tangible surface.

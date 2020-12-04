@@ -1,0 +1,97 @@
+---
+title: 'R Notebook: using Python in R'
+output:
+  html_document:
+    df_print: paged 
+    toc: true
+    toc_float: true
+    toc_depth: 4
+    fig_caption: true
+    number_sections: true 
+---
+
+```{r}
+
+library(devtools);
+
+library(humanVerseWSU);
+
+path.github = "https://raw.githubusercontent.com/MonteShaffer/humanVerseWSU/master/";
+
+include.me = paste0(path.github, "misc/functions-nlp.R");
+# source_url( include.me );
+include.me = paste0(path.github, "humanVerseWSU/R/functions-encryption.R");
+source_url( include.me );
+
+
+
+path.to.nascent = "C:/Users/Alexander Nevsky/Dropbox/WSU-419/Fall 2020/__student_access__/unit_02_confirmatory_data_analysis/nascent/";
+
+folder.nlp = "nlp/";
+path.to.nlp = paste0(path.to.nascent, folder.nlp);
+
+
+```
+# Using Python with R
+
+In this notebook, we will briefly discuss how to setup your workspace to use Python inside of R.
+
+The instructions are for a Windows 10 platform, but the concepts and themes can be applied to a MacOS with some a bit of web searching and self-directed problem solving.
+
+## Download and Install Python
+
+<https://www.python.org/downloads/windows/>.  
+
+- I would install it to `C:\python3`
+- I would add to "Settings" -> Environmental Variables -> Path
+- Now it is "python" not "python2" or "python3" from a shell.
+
+## Download and Install PIP
+
+The package manager for Python is called "pip" ... there are other alternatives, but "pip" has been around the longest.
+
+- Download <https://bootstrap.pypa.io/get-pip.py> to `C:\python3`
+- Run from CMD `C:\python3`: `python get-pip.py`
+- Add "pip" to "Settings" -> Environmental Variables -> Path `C:\python3\Scripts`
+- Close and Open CMD.  Now type `pip install --upgrade pip setuptools wheel` to verify that things are up to date and working.
+
+**You may need to restart RStudio**
+
+## Download and install packages
+
+- Open a CMD prompt
+- Type `pip install -U scikit-learn` to install `scikit-learn` (see: <https://scikit-learn.org/stable/install.html>) 
+- Type `pip install -U nltk` to install `nltk` (see: <https://www.nltk.org/>) 
+- Type `pip install -U numpy` to install `numpy` (see: <https://numpy.org/>)
+
+**Windows C++ compiler**
+
+If you get an error, you may need to download an extra compiler.  I would recommend minimizing the download unless you use Microsoft Tools frequently.
+
+Visual C++ 14.0 tools! <https://stackoverflow.com/questions/44951456/pip-error-microsoft-visual-c-14-0-is-required> which has this link <http://go.microsoft.com/fwlink/?LinkId=691126&fixForIE=.exe.>
+
+## Enable Python in Your Notebook
+
+```{r}
+library(reticulate);
+use_python("C:/python3");
+```
+
+## Hello World in Python
+
+```{python}
+
+print("hello world");
+
+def pownum(base, pow):
+  return base ** pow
+
+print(pownum(9,3));
+
+```
+## Python IDE:  WingIDE
+
+This seems to be a nice IDE.  The PRO version is free for education purposes.  I have requested a key-code for the course and will share once I receive it.
+
+<https://wingware.com/> 
+

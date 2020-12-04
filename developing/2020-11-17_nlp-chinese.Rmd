@@ -1,0 +1,141 @@
+---
+title: 'R Notebook: learn chinese with NLP'
+output:
+  html_document:
+    df_print: paged
+    toc: true
+    toc_float: true
+    toc_depth: 4
+    fig_caption: true
+    number_sections: true 
+---
+
+```{r}
+
+library(devtools);
+
+library(humanVerseWSU);
+
+path.github = "https://raw.githubusercontent.com/MonteShaffer/humanVerseWSU/master/";
+
+include.me = paste0(path.github, "misc/functions-nlp.R");
+# source_url( include.me );
+include.me = paste0(path.github, "humanVerseWSU/R/functions-encryption.R");
+source_url( include.me );
+
+include.me = paste0(path.github, "misc/functions-chinese.R");
+# source_url( include.me );
+
+
+path.to.nascent = "C:/Users/Alexander Nevsky/Dropbox/WSU-419/Fall 2020/__student_access__/unit_02_confirmatory_data_analysis/nascent/";
+
+folder.nlp = "nlp/";
+path.to.nlp = paste0(path.to.nascent, folder.nlp);
+
+
+```
+
+# Chinese word translation as NLP classifier problem
+
+The Chinese language is ancient.  It consists of glyphs that at times have sub-glyphs or radicals. 
+
+Can we use a document training to translate a simple English word like "water" or "ox"?
+
+The mathematics we will use is the concept of set-theory.  If "water" is in let's say ten records, and is unique to the other words in the set, we can uniquely identify the matching Chinese glyph or glyphs.
+
+
+## 1973 Water Ox 
+I was born in March 1973 <https://en.wikipedia.org/wiki/1973>
+
+On the above page, it links to the Chinese Zodiac symbol "Water Ox" and provides the following symbols or glyphs `癸丑年`.
+
+### Decomposing each Glyph
+There are some dictionaries that decompose each of these three glyphs, for example <https://hanzicraft.com/character/%E7%99%B8%E4%B8%91%E5%B9%B4>
+
+- Radical 1 (`癸`): `癸 => 癶 (footsteps), 一 (one), 大 (big)`
+- Radical 2 (`丑`): `丑 => 刀 (knife), 二 (two)`
+- Radical 3 (`年`): `年 => 丿 (bend), 一 (one), 十 (ten), ㇗ (N/A), 丨 (line)`
+
+
+From the radical decomposition, I don't see "Water" or "Ox" anywhere.  An important part of language decomposition is called etymology: how were the words derived?  This is a personal research question I have.
+
+
+### Hanzicraft Resources
+This website links to several "internal" dictionaries:
+
+- <https://hanzicraft.com/lists/frequency>
+- <https://hanzicraft.com/lists/phonetic-sets>
+- <https://hanzicraft.com/lists/productive-component>
+
+and to several "external" dictionaries <https://hanzicraft.com/about>:
+
+- <http://lwc.daanvanesch.nl/>
+- <https://cjkdecomp.codeplex.com/>
+- <http://www.mdbg.net/chindict/chindict.php?page=cc-cedict>
+- <http://lingua.mtsu.edu/chinese-computing/>
+
+There are better "linguistic data sets", but for this notebook, we can use this data as we see fit.
+
+## Translated Prose 
+
+Having single-word dictionaries has its use, but seeing the words in context would provide other insights into definitions.  So can I find a dataset that has english and chinese from a known text?
+
+
+### Chinese-English Document
+Since the Bible is so pervasive, significant effort has been made in translating it into many languages.  In fact, the Gutenberg printing press and much of Western Society is linked to the translation of the Bible (King James created copyright law to prevent the dissemination of un-approved bibles: <https://en.wikipedia.org/wiki/Copyright#Background> which led to the modern U.S. law on copyright and patents).  
+
+#### Chinese HGB and HB5
+There is a website <http://www.o-bible.com/> that contains the Bible in two variants of Chinese.  One called "GB" and "Big5". For example, Genesis 1:
+
+- English KJV <http://www.o-bible.com/cgibin/ob.cgi?version=kjv&book=gen&chapter=1>
+- English BBE <http://www.o-bible.com/cgibin/ob.cgi?version=bbe&book=ge&chapter=1>
+- Chinese HGB <http://www.o-bible.com/cgibin/ob.cgi?version=hgb&book=gen&chapter=1>
+- Chinese HB5 <http://www.o-bible.com/cgibin/ob.cgi?version=hb5&book=gen&chapter=1>
+
+These versions seem to be very common (see <http://web.mit.edu/jywang/www/cef/Bible/Chinese/hgb.htm>).  
+
+- GB refers to the "national standard" encoding and often uses the new simplified characters (tied to the current Chinese government: <https://en.wikipedia.org/wiki/Simplified_Chinese_characters>).
+- Big5 refers to the "Taiwan/Hong Kong" encoding and often uses traditional characters.
+
+#### Chinese Punctuation
+This is a nice example because we can decompose text into books, chapters, and verses <https://www.gotquestions.org/divided-Bible-chapters-verses.html> (paragraph-like).  And then (within a verse) we can analyze each sentence.  The period "." appears to be `。` and the comma "," appears to be `、` or `，` and the colon ":" appears to be `．`  (Genesis 1:14 of HB5)
+
+This will test the capabilities of R, as encoding other languages is a bit of a challenge.  We are also testing a large dataset than the previous examples.  More text to process.
+
+#### Four versions (2 in English, 1 in each form of Chinese)
+
+##### Read in the data
+
+Each of the four versions have the same number of lines.  Line 1 is a header, and we can skip it.  The keys in the KJV are slightly different, so we will process that one last, and use the keys from BBE for all four versions.  I choose BBE because it is English and I can read it.
+
+```{r}
+
+versions = c("bbe","kjv","hb5","hbg");
+langs    = c("en-us", "en-gb", "zh-tw", "zh-cn");
+# https://en.wikipedia.org/wiki/ISO_639-1
+# https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2
+langK    = c("American English", "English", "Traditional Chinese", "Simplified Chinese");
+# we will use the standard codes ...
+
+
+# dataframe format
+# version .. lang .. book.n ... chap.n ... para.n (verse) ... para.text (verse)
+
+path.to.obible = paste0(path.to.nlp, "_data_/chinese/o-bible/");
+
+obible.df = prepareBibleDataFrame(path.to.obible, versions, langs);
+
+```
+
+
+
+
+```{r}
+
+# https://cran.r-project.org/web/packages/corpus/vignettes/chinese.html
+cstops <- "https://raw.githubusercontent.com/ropensci/textworkshop17/master/demos/chineseDemo/ChineseStopWords.txt"
+csw <- paste(readLines(cstops, encoding = "UTF-8"), collapse = "\n") # download
+
+```
+
+

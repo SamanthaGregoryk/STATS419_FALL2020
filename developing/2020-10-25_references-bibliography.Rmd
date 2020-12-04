@@ -1,0 +1,220 @@
+---
+title: 'R Notebook: references and bibliography'
+output:
+  html_document:
+    df_print: paged
+    toc: true
+    toc_float: true
+    toc_depth: 4
+    fig_caption: true
+    number_sections: true 
+---
+
+```{r}
+library(devtools);
+path.github = "https://raw.githubusercontent.com/MonteShaffer/humanVerseWSU/master/";
+
+
+```
+# Cite your Sources! 
+
+In this brief notebook, we are going to discuss how to cite your sources using `natbib` and `bibtex`.  
+
+- <https://en.wikipedia.org/wiki/BibTeX>
+
+- <https://www.ctan.org/pkg/natbib>
+
+## Useful tools
+
+- <https://scholar.google.com/>
+
+- <https://bitly.com/>
+
+## The `master.bib` file
+
+If you browse to your github repository for this course; for me that path is: `C:/_git_/WSU_STATS419_FALL2020/` you will notice a subfolder `biblio` ... this is where we can store "style files" to render our references [I prefer the ormsv080.bst].  
+
+Most importantly, we can create a reference library or dictionary, the `master.bib` file.  You can click on it, to open in RStudio.
+
+It already has a few references.  We will add some more.
+
+<pre>
+@article{Fisher:1936,
+  title={The use of multiple measurements in taxonomic problems},
+  author={Fisher, Ronald A},
+  journal={Annals of eugenics},
+  volume={7},
+  number={2},
+  pages={179--188},
+  year={1936},
+  publisher={Wiley Online Library}
+}
+
+
+
+@article{Anderson:1936,
+  title={The species problem in Iris},
+  author={Anderson, Edgar},
+  journal={Annals of the Missouri Botanical Garden},
+  volume={23},
+  number={3},
+  pages={457--509},
+  year={1936},
+  publisher={JSTOR}
+}
+</pre>
+
+
+<pre>
+@Misc{EDA:Vietnam,
+  year = 2020,
+  author = {{Statistical Genetics Group}},
+  title	= "EXPLORATORY DATA ANALYSIS",
+  institution =	 {THETA: Statistical Genetics Group},
+  howpublished = {(Accessed: August 2020)},
+note = {\\ {\tiny \url{https://bit.ly/3dWiVr0}}}
+}
+
+
+@book{Zieffler:2011,
+  title={Comparing groups: Randomization and bootstrap methods using R},
+  author={Zieffler, Andrew S and Harring, Jeffrey R and Long, Jeffrey D},
+  year={2011},
+  publisher={John Wiley \& Sons}
+}
+</pre>
+
+
+<pre>
+
+@article{Thomas:2020,
+  title={Revisiting Leonardo da Vinci's Vitruvian Man Using Contemporary Measurements},
+  author={Thomas, Diana M and Galbreath, David and Boucher, Maura and Watts, Krista},
+  journal={Jama},
+  volume={323},
+  number={22},
+  pages={2342--2343},
+  year={2020},
+  publisher={American Medical Association}
+}
+
+
+
+@article{Hartigan:1979,
+ ISSN = {00359254, 14679876},
+ URL = {http://www.jstor.org/stable/2346830},
+ author = {J. A. Hartigan and M. A. Wong},
+ journal = {Journal of the Royal Statistical Society. Series C (Applied Statistics)},
+ number = {1},
+ pages = {100--108},
+ publisher = {[Wiley, Royal Statistical Society]},
+ title = {Algorithm AS 136: A K-Means Clustering Algorithm},
+ volume = {28},
+ year = {1979}
+}
+
+</pre>
+
+
+
+<pre>
+
+
+@Misc{Wikipedia:StateCapitals,
+  year = 2020,
+  author = {{Wikipedia}},
+  title	= {{List of capitals in the United States: State Capitals}},
+  institution =	 {{Wikipedia Foundation}},
+  howpublished = {(Accessed: October 2020)},
+note = {\\ {\tiny \url{https://bit.ly/3owcIXY}}}
+}	
+	
+@Misc{Wikipedia:Whitefish,
+  year = 2020,
+  author = {{Wikipedia}},
+  title	= {{Whitefish, Montana}},
+  institution =	 {{Wikipedia Foundation}},
+  howpublished = {(Accessed: October 2020)},
+note = {\\ {\tiny \url{https://bit.ly/3jqEIbr}}}
+}		
+	
+</pre>
+
+
+
+<pre>
+
+@Misc{IMDB,
+  year = 2020,
+  author = {{IMDB}},
+  title	= {{Homepage, IMDB}},
+  institution =	 {{Internet Movie Database (IMDB)}},
+  howpublished = {(Accessed: October 2020)},
+note = {\\ {\tiny \url{https://www.imdb.com/}}}
+}	
+
+
+@Misc{Indeed,
+  year = 2020,
+  author = {{Indeed.com}},
+  title	= {{Homepage, Indeed.com}},
+  institution =	 {{Job Portal: Indeed.com}},
+  howpublished = {(Accessed: October 2020)},
+note = {\\ {\tiny \url{https://www.indeed.com/}}}
+}	
+
+
+
+</pre>
+
+
+
+
+
+<pre>
+
+@book{Tukey:1977,
+  title={Exploratory data analysis},
+  author={Tukey, John W},
+  edition={2},
+  year={1977},
+  publisher={Reading, MA}
+}
+
+</pre>
+
+
+<pre>
+@book{Chambers:2017,
+  title={Extending R},
+  author={Chambers, John M},
+  year={2017},
+  publisher={CRC Press}
+}
+
+
+
+@book{Becker:1988,
+  title={The New S Language},
+  author={Becker, Richard A and Chambers, John M and Wilks, Allan R},
+  publisher={Wadsworth \& Brooks},
+  year={1988}
+}
+
+
+@book{Chambers:1998,
+  title={Programming with data: A guide to the S language},
+  author={Chambers, John M},
+  year={1998},
+  publisher={Springer Science \& Business Media}
+}
+
+@book{Chambers:2008,
+  title={Software for data analysis: programming with R},
+  author={Chambers, John},
+  year={2008},
+  publisher={Springer Science \& Business Media}
+}
+
+
+</pre>
