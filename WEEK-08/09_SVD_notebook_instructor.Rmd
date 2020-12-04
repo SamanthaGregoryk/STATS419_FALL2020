@@ -1,0 +1,433 @@
+---
+title: 'R Notebook sandbox: Playing with SVD'
+output:
+  html_document:
+    df_print: paged
+    toc: true
+    toc_float: true
+    toc_depth: 4
+    fig_caption: true
+    number_sections: true
+params:
+  knitChunkSetEcho: TRUE
+  knitChunkSetWarning: TRUE
+  knitChunkSetMessage: TRUE
+  knitChunkSetCache: TRUE
+  knitChunkSetFigPath: "graphics/"
+    
+my-var: "monte"  # https://bookdown.org/yihui/rmarkdown/html-document.html
+---
+# Top of the world
+
+Some of you may have difficulties accessing Wikipedia (e.g., out of the country, or whatever).  The notebook should benefit you in your efforts (especially for project 2); however, I have uploaded the concluding data frames:
+
+<http://md5.mshaffer.com/WSU_STATS419/_data_/state-capitals/>
+
+or 
+
+<http://md5.mshaffer.com/WSU_STATS419/_data_/state-capitals/final/>
+
+You can access them there, if need be.
+
+
+```{r setup, include=FALSE}
+# I am now setting parameters in YAML header, look above
+knitr::opts_chunk$set(echo = params$knitChunkSetEcho);
+knitr::opts_chunk$set(warning = params$knitChunkSetWarning);
+knitr::opts_chunk$set(message = params$knitChunkSetMessage);
+
+# ... just added ... take a look at how this builds ... you now have your raw files ...
+knitr::opts_chunk$set(cache = params$knitChunkSetCache);
+knitr::opts_chunk$set(fig.path = params$knitChunkSetFigPath);
+
+# knitr::opts_chunk$set(background = "#981E32"); # only works on *.Rnw
+   
+# fig.show ... animate ... 
+
+# CRIMSON ... #981E32
+# GRAY ... #53565A
+
+## this should knit, but I am running some IMDB stuff
+## so I wasn't able to verify a final Knit.
+## please let me know in the Discussion Board if you
+## find any errors, and I will fix
+
+# we don't want scientific notation
+options(scipen  = 999);
+
+library(devtools);
+library(humanVerseWSU);
+packageVersion("humanVerseWSU");  # ‘0.1.4’+
+path.github = "https://raw.githubusercontent.com/MonteShaffer/humanVerseWSU/master/";
+
+library(parallel);
+parallel::detectCores(); # 16 # Technically, this is threads, I have an 8-core processor 
+```
+
+# Singular Value Decomposition
+
+Mathematically, SVD is a more general form of PCA.
+
+<https://math.stackexchange.com/questions/3869/>
+
+## Review of PCA
+
+$$ S = \frac{1}{n-1} X \cdot X^T $$
+If X is scaled `Xs`, this is the same as the correlation matrix $R$.
+
+I used the notation $S$ for sample covariance scaled by $\frac{1}{n-1}$.  
+
+The common general notation, is $\Sigma$:
+
+$$ \Sigma = X \cdot X^\top $$
+We will update `S.eigen = eigen(S);` as `Sigma.eigen = eigen(Sigma);`
+
+The eigenvectors are `W = Sigma.eigen$vectors;`
+The eigenvalues $\lambda_$s are `Lambda = S.eigen$values;`
+
+`D = diag(Lambda);`
+
+`D.sqrt = diag(sqrt(Lambda));`
+
+`T = Xs %*% W;`  This is the full principle components decomposition.
+
+`F = as.matrix(W) %*% D.sqrt;`
+
+`Z = ( W %*% D %*% transposeMatrix(W) );` This was demonstrated to be equivalent to $S$
+
+$$Z = W \cdot D \cdot W^\top$$
+In total, this is:
+
+$$ \frac{1}{n-1}\mathbf X\mathbf X^\top=\frac{1}{n-1}\mathbf W\mathbf D\mathbf W^\top $$
+
+The scaling factor $\frac{1}{n-1}$ is based on the number of observations, but the primary relationship is important:
+
+$$ \mathbf X\mathbf X^\top = \mathbf W\mathbf D\mathbf W^\top $$
+
+## SVD
+
+By definition, singular value decomposition
+
+$$ \mathbf X=\mathbf U\mathbf \Sigma\mathbf V^\top $$
+$$ \frac{1}{n-1}\mathbf X\mathbf X^\top
+=\frac{1}{n-1}(\mathbf U\mathbf \Sigma\mathbf V^\top)(\mathbf U\mathbf \Sigma\mathbf V^\top)^\top
+= \frac{1}{n-1}(\mathbf U\mathbf \Sigma\mathbf V^\top)(\mathbf V\mathbf \Sigma\mathbf U^\top) $$
+
+$$ \mathbf V^\top \mathbf V=\mathbf I $$
+
+$$ \frac{1}{n-1}\mathbf X\mathbf X^\top=\frac{1}{n-1}\mathbf U\mathbf \Sigma^2 \mathbf U^\top $$
+
+
+
+
+
+## Matching PCA to SVD
+
+$$ \mathbf W \mathbf D \mathbf W^\top = \mathbf U \mathbf \Sigma^2 \mathbf U^\top $$
+The left-hand side (LHS) was the PCA structure; the right-hand side (RHS) was the SVD structure.  With different notation, they are equivalent.
+
+
+$$ \mathbf W_{\text{\tiny (PCA)}} = \mathbf U_{\text{\tiny (SVD)}}$$
+
+$$ \mathbf D_{\text{\tiny (PCA)}} = \mathbf \Sigma^2_{\text{\tiny (SVD)}}$$
+
+## Empirical demonstration
+
+### Data generation
+```{r, chunk-pca-2d-ellipsis, cache.rebuild=TRUE}
+# cache.rebuild ... This will prevent Xs from being used from previous cache ...
+ 
+library(mvnfast);
+source_url( paste0(path.github, "humanVerseWSU/R/functions-maths.R") );   # deg2rad
+                                          # zeroIsh
+
+set.seed(1222015);
+
+mu = c(1,3); # centers for x,y
+Sigma = diag(c(2,23)); # variance for x,y
+
+nsim = 9000;
+X = rmvn(nsim, mu, Sigma, ncores=2);  # this is parallelizability with cores
+# ncores	... Number of cores used. The parallelization will take place only if OpenMP is supported.
+
+xy.lim = c(min(X), max(X)); # square
+
+print("################   X   ################");
+print(paste0("MEANS:    x = ",round(mean(X[,1]),3),
+                "       y = ",round(mean(X[,2]),3) ));
+
+print(paste0("VARIANCE: x = ",round(var(X[,1]),3),
+                "       y = ",round(var(X[,2]),3) ));
+
+plot(X, pch=20, cex=0.25, main="X", 
+        xlim=xy.lim, ylim=xy.lim );
+  abline(v=mean(X[,1]), col="red"); 
+  abline(h=mean(X[,2]), col="red");
+points(x=mean(X[,1]),y=mean(X[,2]), 
+          pch=21, col="red", cex=8);
+
+
+Xs = scale(X);
+
+print("################   Xs   ################");
+print(paste0("MEANS:    x = ",round(mean(Xs[,1]),3),
+                "       y = ",round(mean(Xs[,2]),3) ));
+
+print(paste0("VARIANCE: x = ",round(var(Xs[,1]),3),
+                "       y = ",round(var(Xs[,2]),3) ));
+
+plot(Xs, pch=20, cex=0.25, main="Xs", 
+        xlim=xy.lim, ylim=xy.lim );
+  abline(v=mean(Xs[,1]), col="blue");
+  abline(h=mean(Xs[,2]), col="blue");
+points(x=mean(Xs[,1]),y=mean(Xs[,2]), 
+          pch=21, col="blue", cex=8);
+
+
+plot(Xs, pch=20, cex=0.25, main="Xs");
+  abline(v=mean(Xs[,1]), col="green");
+  abline(h=mean(Xs[,2]), col="green");
+points(x=mean(Xs[,1]),y=mean(Xs[,2]), 
+          pch=21, col="green", cex=8);
+
+```
+
+### PCA Maths
+
+We will not include the scaling factor $\frac{1}{n-1}$ this time.
+
+```{r, chunk-pca-data-run-matrix}
+
+source_url( paste0(path.github, "humanVerseWSU/R/functions-str.R") );  # printMatrix
+
+
+n = nrow(Xs); n;  # number of observations
+m = ncol(Xs); m;  # number of features
+
+Sigma = ( transposeMatrix(as.matrix(Xs)) %*% as.matrix(Xs)) ;
+
+Sigma.eigen = eigen(Sigma); # eigenvalues again
+
+Lambda = Sigma.eigen$values;
+
+D = diag(Lambda);  # Lambda * I
+D.sqrt = diag(sqrt(Lambda));
+
+T = Sigma.eigen$vectors;  # orthogonal unit vectors
+
+W = Xs %*% T;
+
+F = as.matrix(W) %*% D.sqrt;
+
+Z = ( W %*% D %*% transposeMatrix(W) );
+
+```
+
+
+
+### SVD Empirical
+
+```{r, chunk-svd-data-run-matrix}
+
+# returning the matrices U and V from svd are not super-efficient, unless of course you need them...
+
+p = m;  # you could have it "data-reduce" and only report a number smaller than the total features "m"
+Xs.svd = svd(Xs, nu = p, nv = p);
+
+D.svd = Xs.svd$d;  D.svd;
+U.svd = Xs.svd$u;  dim(U.svd);
+V.svd = Xs.svd$v;  dim(V.svd);  V.svd
+
+
+```
+
+## Compare Numerically SVD == PCA
+
+```{r, chunk-svd-equals-pca}
+
+print("Are D.pca and D.svd equivalent (when scaled)?");
+D.pca = sqrt( diag(D) );  D.pca;
+isClose(D.pca, D.svd);
+
+print("Are W.pca and U.svd equivalent (when scaled)?");
+W.pca = W / D.pca;  dim(W.pca);  # scaling factor is required ...
+
+my.diff = zeroIsh( (W.pca - U.svd), 5);  # the SVD technique is numerical, not exactly zero-Ish ... but look at the summary ...
+summary(my.diff);
+
+
+print("Are T.pca and V.svd equivalent (sign-scaling required)?");
+T.pca = T;  # this is why we need to spell out TRUE ...
+isClose(T.pca, V.svd);
+
+# we have a sign-change on col #2
+isClose(T.pca[,1], V.svd[,1]);
+isClose(T.pca[,2], -1*V.svd[,2]);  # 
+
+
+
+```
+
+## Speed Tests
+
+
+We will compare the `princomp` form of PCA with the `svd` form of SVD.
+
+### Options
+```{r, chunk-svd-pca-speedtest-setup, cache.rebuild=TRUE}
+
+mySetSeed = 1222015; 
+#option.n = c(10^1, 10^2, 10^3, 10^4);
+#option.m = c(5^1, 5^2, 5^3, 5^4, 5^5, 5^6);
+option.n = c(1000, 3000, 9000);
+option.m = c(25, 125, 625);
+
+timing.m = c();
+timing.n = c();
+timing.rmvn = c();
+timing.cov = c();
+timing.xxt = c();
+timing.pca = c();
+timing.svd.slow = c();
+timing.svd.fast = c();
+
+```
+### Runs
+```{r, chunk-svd-pca-speedtest-runs}
+
+for(m in option.m)
+  {
+  for(n in option.n)
+    {
+    timing.m = c(timing.m, m);
+    timing.n = c(timing.n, n);
+    print(paste0(" SIMULATION ===>   m :: ",m,"    n :: ",n)); 
+################### GENERATION rmvn ################  
+    print("  ------------------------> rmvn ");
+time.start = Sys.time();    
+    # we will let this be random every time ...
+    mu = round( runif(m, 1, 5), digits = 0);  
+    # we will let this be random every time ...
+    Sigma = diag( round( runif(m, 1, 25), digits = 0) );
+    set.seed(mySetSeed);  # the next line will run the same every time (if mu and Sigma are the same) ...
+    X = rmvn(n, mu, Sigma, ncores=2); 
+    Xs = scale(X);
+time.end = Sys.time();
+elapse = sprintf("%.3f", as.numeric(time.end) - as.numeric(time.start));
+    timing.rmvn = c(timing.rmvn, elapse);
+    print(elapse);
+################### cov(X) ################ 
+    print("  ------------------------> cov(X) ");
+time.start = Sys.time();     
+    Xs.cov = cov(Xs);
+time.end = Sys.time();
+elapse = sprintf("%.3f", as.numeric(time.end) - as.numeric(time.start));
+    timing.cov = c(timing.cov, elapse); 
+    print(elapse);
+################### X %*% transposeMatrix( X ) #####  
+    print("  ------------------------> matrix computations ");
+time.start = Sys.time();     
+      n = nrow(Xs); n;  # number of observations
+      m = ncol(Xs); m;  # number of features
+      
+      Sigma = ( transposeMatrix(as.matrix(Xs)) %*% as.matrix(Xs)) ;
+      
+      Sigma.eigen = eigen(Sigma); # eigenvalues again
+      
+      Lambda = Sigma.eigen$values;
+      
+      D = diag(Lambda);  # Lambda * I
+      D.sqrt = diag(sqrt(Lambda));
+      
+      T = Sigma.eigen$vectors;  # orthogonal unit vectors
+      
+      W = Xs %*% T;
+      
+      F = as.matrix(W) %*% D.sqrt;
+      
+      Z = ( W %*% D %*% transposeMatrix(W) );
+time.end = Sys.time();
+elapse = sprintf("%.3f", as.numeric(time.end) - as.numeric(time.start));
+    timing.xxt = c(timing.xxt, elapse); 
+    print(elapse);
+################### PCA princomp #####  
+    print("  ------------------------> PCA princomp ");
+time.start = Sys.time(); 
+    if(n > m)
+      {
+      Xs.princomp = stats::princomp(Xs);
+      }
+time.end = Sys.time();
+elapse = sprintf("%.3f", as.numeric(time.end) - as.numeric(time.start));
+    timing.pca = c(timing.pca, elapse);  
+    print(elapse);
+################### SVD full   #####   
+    print("  ------------------------> SVD full return ");
+time.start = Sys.time();     
+      p = m;  # you could have it "data-reduce" and only report a number smaller than the total features "m"
+      Xs.svd = svd(Xs, nu = p, nv = p);
+time.end = Sys.time();
+elapse = sprintf("%.3f", as.numeric(time.end) - as.numeric(time.start));
+    timing.svd.slow = c(timing.svd.slow, elapse);  
+    print(elapse);
+################### SVD fast   #####   
+    print("  ------------------------> SVD fast return ");
+time.start = Sys.time();     
+      p = 0;  # you could have it "data-reduce" and only report a number smaller than the total features "m"
+      Xs.svd = svd(Xs, nu = p, nv = p);
+time.end = Sys.time();
+elapse = sprintf("%.3f", as.numeric(time.end) - as.numeric(time.start));
+    timing.svd.fast = c(timing.svd.fast, elapse);  
+    print(elapse);    
+    
+        
+    }
+  }
+
+```
+### Results
+```{r, chunk-svd-pca-speedtest-results, cache.rebuild=TRUE}
+
+# cbind on vectors ...
+
+my.times = cbind(timing.n, timing.m, timing.rmvn,
+                  timing.cov, timing.xxt, timing.pca,
+                  timing.svd.slow, timing.svd.fast);
+colnames(my.times) = c("n", "m", "rmvn", "cov", "xxt", "pca", "svd.slow", "svd.fast");
+
+my.times = as.data.frame(my.times);
+
+my.times;
+
+```
+
+### Summary of Speed Test
+
+If you can't get the simulations to run, you can use my results that can be found here: `http://md5.mshaffer.com/WSU_STATS419/_data_/my.times` ...
+
+### The concept of "one" graphic
+
+The "one graph" idea is to visually tell a story with just one graph.  
+
+Some ideas:
+
+* I would suggest using `lty` line type
+  - 1=solid (default)
+  - 2=dashed
+  - 3=dotted
+  - 4=dotdash
+  - 5=longdash
+  - 6=twodash
+* I would suggest using `lwd` line thickness
+  - 1 is default
+  - 0.25 is thinner
+  - 3 is thicker
+* I would suggest using `col` for color <https://www.datanovia.com/en/blog/top-r-color-palettes-to-know-for-great-data-visualization/#scientific-journal-color-palettes> or <https://www.r-bloggers.com/2016/07/creating-color-palettes-in-r/>
+* I would suggest using `pch` for point type <http://www.endmemo.com/r/pchsymbols.php>
+* I would suggest using `type` for "b"
+
+http://md5.mshaffer.com/WSU_STATS419/_data_/my.times
+
+Above are `plot` suggestions, and you are welcome to use ``ggplot2` if that is your thing.
+
+-- Write Something Here --

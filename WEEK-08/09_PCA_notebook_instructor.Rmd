@@ -1,0 +1,647 @@
+---
+title: 'R Notebook sandbox: Playing with PCA'
+output:
+  html_document:
+    df_print: paged
+    toc: true
+    toc_float: true
+    toc_depth: 4
+    fig_caption: true
+    number_sections: true
+my-var: "monte"  # https://bookdown.org/yihui/rmarkdown/html-document.html
+---
+# Top of the world
+
+Some of you may have difficulties accessing Wikipedia (e.g., out of the country, or whatever).  The notebook should benefit you in your efforts (especially for project 2); however, I have uploaded the concluding data frames:
+
+<http://md5.mshaffer.com/WSU_STATS419/_data_/state-capitals/>
+
+or 
+
+<http://md5.mshaffer.com/WSU_STATS419/_data_/state-capitals/final/>
+
+You can access them there, if need be.
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE);
+knitr::opts_chunk$set(warning = FALSE);
+knitr::opts_chunk$set(message = FALSE);
+
+## this should knit, but I am running some IMDB stuff
+## so I wasn't able to verify a final Knit.
+## please let me know in the Discussion Board if you
+## find any errors, and I will fix
+
+# we don't want scientific notation
+options(scipen  = 999);
+
+library(devtools);
+library(humanVerseWSU);
+packageVersion("humanVerseWSU");  # ‘0.1.4’+
+path.github = "https://raw.githubusercontent.com/MonteShaffer/humanVerseWSU/master/";
+
+library(parallel);
+parallel::detectCores(); # 16 # Technically, this is threads, I have an 8-core processor 
+```
+
+# Principle Components Analysis
+
+Mathematically, a n-dimensional space can be transformed using a variety of techniques that are mathematically equivalent.  This is the concept of a vector having a basis.
+
+So if I have 2-dimensional data, I can transform it into a new basis, still having 2-dimensions.
+
+And if I have 3-dimensional data, I can transform it into a new basis, still having 3-dimensions.
+
+...
+
+And if I have 7-dimensional data, I can transform it into a new basis, still having 7-dimensions.
+
+...
+
+And if I have n-dimensional data, I can transform it into a new basis, still having n-dimensions.
+
+## 2-Dimensions
+
+### Elliptical
+
+If the variances would be equal, these ellipses would be circles.
+
+```{r, chunk-pca-2d-ellipsis}
+library(mvnfast);
+source_url( paste0(path.github, "humanVerseWSU/R/functions-maths.R") );  # deg2rad
+
+set.seed(1222015);
+
+mu = c(1,3); # centers for x,y
+Sigma = diag(c(2,23)); # variance for x,y
+
+nsim = 9000;
+X = rmvn(nsim, mu, Sigma, ncores=2);  # this is parallelizability with cores
+
+xy.lim = c(min(X), max(X)); # square
+
+print("################   X   ################");
+print(paste0("MEANS:    x = ",round(mean(X[,1]),3),
+                "       y = ",round(mean(X[,2]),3) ));
+
+print(paste0("VARIANCE: x = ",round(var(X[,1]),3),
+                "       y = ",round(var(X[,2]),3) ));
+
+plot(X, pch=20, cex=0.25, main="X", 
+        xlim=xy.lim, ylim=xy.lim );
+  abline(v=mean(X[,1]), col="red"); 
+  abline(h=mean(X[,2]), col="red");
+points(x=mean(X[,1]),y=mean(X[,2]), 
+          pch=21, col="red", cex=8);
+
+
+Xs = scale(X);
+
+print("################   Xs   ################");
+print(paste0("MEANS:    x = ",round(mean(Xs[,1]),3),
+                "       y = ",round(mean(Xs[,2]),3) ));
+
+print(paste0("VARIANCE: x = ",round(var(Xs[,1]),3),
+                "       y = ",round(var(Xs[,2]),3) ));
+
+plot(Xs, pch=20, cex=0.25, main="Xs", 
+        xlim=xy.lim, ylim=xy.lim );
+  abline(v=mean(Xs[,1]), col="blue");
+  abline(h=mean(Xs[,2]), col="blue");
+points(x=mean(Xs[,1]),y=mean(Xs[,2]), 
+          pch=21, col="blue", cex=8);
+
+
+plot(Xs, pch=20, cex=0.25, main="Xs");
+  abline(v=mean(Xs[,1]), col="green");
+  abline(h=mean(Xs[,2]), col="green");
+points(x=mean(Xs[,1]),y=mean(Xs[,2]), 
+          pch=21, col="green", cex=8);
+
+```
+It is called "scaling" for a reason.  A translation in the (x,y) to "mean-center" at zero.  And a scaling factor of (x,y) ... e.g., our z-scores.
+
+I keep the `xlim` and `ylim` the same to see this ("red" vs "blue").  Then I let "green" auto-scale, although it is equal to "blue".
+
+### Rotated
+We can take that same data and rotate it ... eventually we will call this `phi` ... currently, hardcoded as $\phi = 60$ in degrees, so I have the helper functions which I have placed in `functions-maths.R`.
+
+```{r, chunk-pca-2d-ellipsis-rotated}
+x = X[,1];
+y = X[,2];
+
+XR = X; # let's manually rotate 60 ...
+
+XR[,1] = x * cos(deg2rad(60)) - y * sin(deg2rad(60));
+XR[,2] = x * sin(deg2rad(60)) + y * cos(deg2rad(60));
+
+xyr.lim = c(min(XR),max(XR));
+
+print("################   XR   ################");
+print(paste0("MEANS:    x = ",round(mean(XR[,1]),3),
+                "       y = ",round(mean(XR[,2]),3) ));
+
+print(paste0("VARIANCE: x = ",round(var(XR[,1]),3),
+                "       y = ",round(var(XR[,2]),3) ));
+
+plot(XR, pch=20, cex=0.25, main="XR", 
+        xlim=xyr.lim, ylim=xyr.lim );
+  abline(v=mean(XR[,1]), col="red"); 
+  abline(h=mean(XR[,2]), col="red");
+points(x=mean(XR[,1]),y=mean(XR[,2]), 
+          pch=21, col="red", cex=8);
+
+XRs = scale(XR);
+
+print("################   XRs   ################");
+print(paste0("MEANS:    x = ",round(mean(XRs[,1]),3),
+                "       y = ",round(mean(XRs[,2]),3) ));
+
+print(paste0("VARIANCE: x = ",round(var(XRs[,1]),3),
+                "       y = ",round(var(XRs[,2]),3) ));
+
+
+plot(XRs, pch=20, cex=0.25, main="XRs", 
+        xlim=xyr.lim, ylim=xyr.lim );
+  abline(v=mean(XRs[,1]), col="blue");
+  abline(h=mean(XRs[,2]), col="blue");
+points(x=mean(XRs[,1]),y=mean(XRs[,2]), 
+          pch=21, col="blue", cex=8);
+
+
+
+plot(XRs, pch=20, cex=0.25, main="XRs");
+  abline(v=mean(XRs[,1]), col="green");
+  abline(h=mean(XRs[,2]), col="green");
+points(x=mean(XRs[,1]),y=mean(XRs[,2]), 
+          pch=21, col="green", cex=8);
+
+```
+
+Translations, scalings, and rotations are not changing the overall basis.
+
+### Principle Components Analysis of Xs
+
+If we don't scale, the one dimension will outweigh another dimension.  This will create uninterpretable results.
+
+
+```{r, chunk-pca-2d}
+
+Xs.PCS = princomp(Xs);
+
+summary(Xs.PCS);
+str(Xs.PCS);
+
+
+
+# XR[,1] = x * cos(deg2rad(60)) - y * sin(deg2rad(60));
+
+```
+
+```{r, chunk-pca-2d-R}
+
+XRs.PCS = princomp(XRs);
+
+summary(XRs.PCS);
+str(XRs.PCS);
+
+```
+
+
+
+
+
+
+
+
+## 3-Dimensions
+
+### Elliptical
+
+If the variances would be equal, these ellipses would be circles.
+
+```{r, chunk-pca-3d-ellipsis}
+
+library(scatterplot3d);
+library(rgl); 
+
+set.seed(1222015);
+
+mu = c(1,3,8); # centers for x,y
+Sigma = diag(c(2,23,13)); # variance for x,y
+
+X = rmvn(nsim, mu, Sigma, ncores=2);  # this is parallelizability with cores
+
+xyz.lim = c(min(X), max(X)); # square
+
+print("################   X   ################");
+print(paste0("MEANS:    x = ",round(mean(X[,1]),3),
+                "       y = ",round(mean(X[,2]),3),
+                "       z = ",round(mean(X[,3]),3)));
+
+print(paste0("VARIANCE: x = ",round(var(X[,1]),3),
+                "       y = ",round(var(X[,2]),3),
+                "       z = ",round(var(X[,3]),3)));
+
+
+scatterplot3d(X, xlim=xyz.lim, ylim=xyz.lim, zlim=xyz.lim, highlight.3d=FALSE, main="X - 3D Scatterplot", color="red" );
+
+# this is interactive, and will open in its own window
+plot3d(X, xlim=xyz.lim, ylim=xyz.lim, zlim=xyz.lim, main="X - 3D plot",col="red" );
+
+graphics::plot( as.data.frame(X) );
+
+Xs = scale(X);
+
+print("################   Xs   ################");
+print(paste0("MEANS:    x = ",round(mean(Xs[,1]),3),
+                "       y = ",round(mean(Xs[,2]),3),
+                "       z = ",round(mean(Xs[,3]),3)));
+
+print(paste0("VARIANCE: x = ",round(var(Xs[,1]),3),
+                "       y = ",round(var(Xs[,2]),3),
+                "       z = ",round(var(Xs[,3]),3)));
+
+scatterplot3d(Xs, xlim=xyz.lim, ylim=xyz.lim, zlim=xyz.lim, highlight.3d=FALSE, main="Xs - 3D Scatterplot", color="blue" );
+
+# this is interactive, and will open in its own window
+plot3d(Xs, xlim=xyz.lim, ylim=xyz.lim, zlim=xyz.lim, main="Xs - 3D plot",col="blue" );
+
+graphics::plot( as.data.frame(Xs) );
+
+```
+It is called "scaling" for a reason.  A translation in the (x,y) to "mean-center" at zero.  And a scaling factor of (x,y) ... e.g., our z-scores.
+
+I keep the `xlim` and `ylim` the same to see this ("red" vs "blue").  Then I let "green" auto-scale, although it is equal to "blue".
+
+### Rotated
+We can take that same data and rotate it ... eventually we will call this `phi` ... currently, hardcoded as $\phi = 60$ in degrees, so I have the helper functions which I have placed in `functions-maths.R`.
+
+```{r, chunk-pca-3d-ellipsis-rotated}
+XR = X; # let's manually rotate 60 ...
+
+x = X[,1];
+y = X[,2];
+z = X[,3];
+
+# rotate around z-axis by angle phi
+# https://stackoverflow.com/questions/20759214/
+r = sqrt(x*x + y*y);
+theta = atan(y/x);
+phi = deg2rad(60);
+# (r * cos(theta + phi), r * sin(theta + phi))
+
+XR[,1] = r * cos(theta + phi);  # x
+XR[,1] = r * sin(theta + phi);  # y
+
+
+xyzr.lim = c(min(XR),max(XR));
+
+
+print("################   XR   ################");
+print(paste0("MEANS:    x = ",round(mean(XR[,1]),3),
+                "       y = ",round(mean(XR[,2]),3),
+                "       z = ",round(mean(XR[,3]),3)));
+
+print(paste0("VARIANCE: x = ",round(var(XR[,1]),3),
+                "       y = ",round(var(XR[,2]),3),
+                "       z = ",round(var(XR[,3]),3)));
+
+
+scatterplot3d(XR, xlim=xyzr.lim, ylim=xyzr.lim, zlim=xyzr.lim, highlight.3d=FALSE, main="XR - 3D Scatterplot", color="green");
+
+# this is interactive, and will open in its own window
+plot3d(XR, xlim=xyzr.lim, ylim=xyzr.lim, zlim=xyzr.lim, main="XR - 3D plot", col="green");
+
+
+graphics::plot( as.data.frame(XR) );
+
+
+XRs = scale(XR);
+
+
+print("################   XRs   ################");
+print(paste0("MEANS:    x = ",round(mean(XRs[,1]),3),
+                "       y = ",round(mean(XRs[,2]),3),
+                "       z = ",round(mean(XRs[,3]),3)));
+
+print(paste0("VARIANCE: x = ",round(var(XRs[,1]),3),
+                "       y = ",round(var(XRs[,2]),3),
+                "       z = ",round(var(XRs[,3]),3)));
+
+scatterplot3d(XRs, xlim=xyzr.lim, ylim=xyzr.lim, zlim=xyzr.lim, highlight.3d=FALSE, main="XR - 3D Scatterplot", color="orange");
+
+# this is interactive, and will open in its own window
+plot3d(XRs, xlim=xyzr.lim, ylim=xyzr.lim, zlim=xyzr.lim, main="XR - 3D plot", col="orange");
+
+graphics::plot( as.data.frame(XRs) );
+
+
+```
+
+Translations, scalings, and rotations are not changing the overall basis.
+
+### Principle Components Analysis of Xs
+
+If we don't scale, the one dimension will outweigh another dimension.  This will create uninterpretable results.
+
+
+```{r, chunk-pca-3d}
+
+Xs.PCS = princomp(Xs);
+
+summary(Xs.PCS);
+str(Xs.PCS);
+
+```
+
+```{r, chunk-pca-2d-R-princomp}
+
+XRs.PCS = princomp(XRs);
+
+summary(XRs.PCS);
+str(XRs.PCS);
+
+```
+
+
+## n-Dimensions
+
+We could continue this for many dimensions.  After 3-D, we have an issue with plotting them all at the same time.
+
+`graphics::plot( as.data.frame(XRs) );`
+
+We can do pairwise plots with the above.
+
+# A Data Example
+
+This includes athletic records for 55 countries in each
+of 8 track and field events.  This was likely in the 1980s, but is still a nice learning example.
+
+```{r, chunk-pca-data-run-setup}
+## DROPBOX ... __student_access__ ...
+
+path.dataset = "C:/Users/Alexander Nevsky/Dropbox/WSU-419/Fall 2020/__student_access__/sample_latex_files/Multivariate-2009/datasets/";
+
+file.running = paste0(path.dataset,"RECORDS.csv");
+myData = read.csv(file.running,header=FALSE);
+  colnames(myData)=c("Country","100m","200m","400m",
+                               "800m","1500m","5000m",
+                              "10000m","marathon");
+
+X = (myData[,-1]);
+Xs = scale(X);
+
+rownames(X) = rownames(Xs) = myData[,1]; # We still have the country names, important when we get to biplot
+
+Xs;
+
+
+performKMOTest(Xs);
+performBartlettSphericityTest(Xs);
+
+```
+
+## Matrix Maths
+
+```{r, chunk-pca-data-run-matrix}
+n = nrow(Xs); n;  # number of observations
+m = ncol(Xs); m;  # number of features
+
+# why does covariance equal correlation 
+# it's scaled
+# isClose deals with rounding/floating-point issues
+print("Comparing covariance and correlation of Xs");
+isClose( as.numeric( cov(Xs) ), as.numeric( cor(Xs) ) );  
+
+S = ( transposeMatrix(as.matrix(Xs)) %*% as.matrix(Xs)) / (n-1);
+dim(S);
+
+print("Comparing S and the covariance of Xs");
+isClose( as.numeric( S ), as.numeric( cov(Xs) ) ); 
+
+S.eigen = eigen(S); # eigenvalues again
+str(S.eigen);
+
+U = S.eigen$vectors;
+
+Lambda = S.eigen$values;
+length(Lambda);   # notice it is of length "m"
+
+E = diag(Lambda);
+dim(E);
+
+VAF = 100 * round(Lambda / traceMatrix(S), digits=4);
+
+VAF.cumsum = cumsum(VAF);
+
+Z = as.matrix(Xs) %*% as.matrix(U);
+dim(Z);
+
+# loadings
+F = round( cor(Xs,Z), digits=4);
+dim(F);
+
+```
+
+## Summary of Some Maths
+
+```{r, chunk-pca-data-run-summary}
+
+Answer = round( rbind(F, rep(NA,times=8), Lambda, VAF, VAF.cumsum)
+            ,digits=4);
+  rownames(Answer) = 
+                c("100m","200m","400m","800m",
+                  "1500m","5000m","10000m","marathon",
+                  "", "EIGEN","% VAF", "C. % VAF");
+Answer;
+
+```
+
+## Run PCA
+
+```{r, chunk-pca-data-run-princomp-prcomp}
+
+Xs.princomp = stats::princomp(Xs);
+  summary(Xs.princomp, loadings=TRUE);
+
+Xs.prcomp = stats::prcomp(Xs);
+  summary(Xs.prcomp, loadings=TRUE);
+Xs.prcomp.E = round( zapsmall( cov(Xs.prcomp$x) ), digits=3);
+  Xs.prcomp.E;
+Xs.prcomp.lambda = diag(Xs.prcomp.E);
+Xs.prcomp.lambda;
+
+# From matrix "maths"  ... Equal except for some rounding errors ...
+Lambda;
+
+```
+
+## Variance Accounted For (VAF)
+
+The first dimension is selected to maximize explaining the data.  The proportion or percentage of variance explained for that dimension is reported (`% VAF`).
+
+The second dimension is selected to be orthogonal to the first dimension.  The proportion or percentage of variance explained for that dimension is reported (`% VAF`).  And the cumulative proportion or percentage of variance is also recorded (`C. % VAF`).
+
+The third dimension is selected to be orthogonal to the first and second dimension. The proportion or percentage of variance explained for that dimension is reported (`% VAF`).  And the cumulative proportion or percentage of variance is also recorded (`C. % VAF`).
+
+And, so on.
+
+## Dimension Selection
+
+So how many dimensions are "good enough"?  There are a few common "rules of thumb".
+
+### Kaiser rule
+
+Choose `Lambda` values that are greater than one; that is eigenvalues greater than one.
+
+"The advantage of the rule is that it is easy to calculate, especially if you live in the 1950s, and don't have access to a fast computer." <https://stats.stackexchange.com/questions/253535/>
+
+### Common "G" factor
+
+When 80% of the variance is accounted for.  That is the (`C. % VAF`) reaches `0.800` or higher.
+
+### Scree Plotting (e.g., similar to Exploratory Factor Analysis)
+
+
+```{r, chunk-pca-data-run-how-many-factors}
+
+source_url( paste0(path.github, "humanVerseWSU/R/functions-EDA.R") );   # how many factors
+
+Xs.how.many = howManyFactorsToSelect(Xs);
+
+```
+
+## More Maths
+
+The nature of PCA is similar to SVD. <https://math.stackexchange.com/questions/3869/what-is-the-intuitive-relationship-between-svd-and-pca>
+
+Computationally, computing the $S$ matrix (covariance) is expensive.  SVD is less expensive, so for larger matrices, it is a best approach.
+
+$$ S = \frac{X \cdot X^T}{n-1} $$ where $X^T$ is the transpose of the data matrix.  I am speaking generically or mathematically, which in this case was `Xs`.
+
+The "loadings" are $U$ (the "eigen" vectors).
+
+The "weights" of each component is based on its "eigen" value $\lambda$.  Review what `Lambda / sum(Lambda)` would generate.
+
+We have $m = 1, 2, 3, ... 8$ maximum components because that's the maximum number of dimensions we can rotate if we started with 8 features ...
+
+This is a nice video explaining the importance of the vector maths.  <https://www.youtube.com/watch?v=mBcLRGuAFUk>
+
+## Orthogonal Nature of LHS U
+
+On the left-hand side is the matrix $U$.
+
+We computed $Z = X \cdot U$.  
+
+```{r, chunk-pca-U}
+dim(Xs);  # data
+dim(S);   # sample variance (correlation if Xs)
+dim(U);   # the eigenvectors associated with
+length(Lambda);
+n;
+m;
+dim(Z);   
+
+
+# what do you notice ??? ... eigenvalues for a reason
+zapsmall( U %*% transposeMatrix(U), digits=2);
+zapsmall( transposeMatrix(U) %*% U, digits=2);
+
+biplot(Xs.princomp);  # equivalent to # biplot(Xs.prcomp);
+biplot(Xs.princomp, 1:2);
+biplot(Xs.princomp, 3:2);  # Netherlands and something with 200 meters
+biplot(Xs.princomp, 3:4); 
+biplot(Xs.princomp, 5:4);  # Cook & marathon, Mauritius and 100m, W. Samoa and 800m
+biplot(Xs.princomp, 5:6);
+biplot(Xs.princomp, 7:6);
+biplot(Xs.princomp, 7:8);
+
+
+# notice the ordering
+# the next will have the same component on the same dimension
+
+# There are meaning in the higher dimensions, although it does not explain a lot of variance in all of the Countries, it may represent a specific athlete:
+
+# Netherlands   200m  
+# Cook          marathon
+# Mauritius     100m
+# W. Samoa      800m
+
+
+```
+
+Think about what this is showing.  It is mapping **both** the rows (countries) and columns (races) on the same component reduction map (showning any two components at a time). 
+
+# Conclusion 
+
+<https://en.wikipedia.org/wiki/200_metres#Men_(outdoor)>
+
+Who the outliers from these countries may be very difficult to discover because the Soviet era doesn't seem to have a lot of balanced records.
+
+<https://en.wikipedia.org/wiki/Men%27s_200_metres_world_record_progression>
+
+Maybe Muriaroa Ngaro (1980) was the runner associated with the marathon from the Cook Islands <https://en.wikipedia.org/wiki/List_of_Cook_Islands_records_in_athletics#Men>
+
+In 1980, he ran the marathon in 2:51:26 ... The winning time was 2:11:03 run by German Waldemar Cierpinski (East Germany).  <https://en.wikipedia.org/wiki/Athletics_at_the_1980_Summer_Olympics_%E2%80%93_Men%27s_marathon>
+
+So maybe Muriaroa Ngaro was an extreme outlier because he was so slow.
+
+```{r, chunk-pca-conclusion}
+
+X[c(12,34,36,38,51,55,53,54),];
+
+source_url( paste0(path.github, "humanVerseWSU/R/functions-stats.R") );  # updated findOutliersUsingIQR
+
+
+## so let's examine
+Countries = rownames(X);
+Events = colnames(X);
+
+for(i in 1:8)
+  {
+  event = Events[i];
+  print("############################");
+  print(paste0( " Event :: ", event ) );  # print(paste0 ... should be a helper function ... use it all the time
+  
+  outliers = findOutliersUsingIQR(X[,i]);
+    slow = outliers$inner[2];  # inner fence ... 
+    fast = outliers$inner[1];  # inner fence ... 
+  
+  if(!is.na(slow))
+    {
+    print("slow");
+    print( Countries[ X[,i] >= slow ] );
+    }
+  if(!is.na(fast))
+    {
+    print("fast");
+    print( Countries[ X[,i] <= fast ] );
+    }
+  }
+
+```
+
+## Another EDA analysis hclust/pvclust
+
+```{r, chunk-pca-conclusion-eda}
+
+source_url( paste0(path.github, "humanVerseWSU/R/functions-EDA.R") ); 
+
+Xs;
+dim(Xs);
+perform.hclust(Xs, n.groups = 12, pvclust.parallel = TRUE); 
+
+
+Xs.t = transposeMatrix(Xs);
+Xs.t;
+dim(Xs.t);
+perform.hclust(Xs.t, n.groups = 6, pvclust.parallel = TRUE); 
+
+
+```
+
+
+
+

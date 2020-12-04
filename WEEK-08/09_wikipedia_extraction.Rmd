@@ -1,0 +1,617 @@
+---
+title: 'R Notebook sandbox: Playing with Wikipedia'
+output:
+  html_document:
+    df_print: paged
+    toc: true
+    toc_float: true
+    toc_depth: 4
+    fig_caption: true
+    number_sections: true
+my-var: "monte"  # https://bookdown.org/yihui/rmarkdown/html-document.html
+---
+# Top of the world
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE);
+knitr::opts_chunk$set(warning = FALSE);
+knitr::opts_chunk$set(message = FALSE);
+
+## this should knit, but I am running some IMDB stuff
+## so I wasn't able to verify a final Knit.
+## please let me know in the Discussion Board if you
+## find any errors, and I will fix
+
+# we don't want scientific notation
+options(scipen  = 999);
+```
+
+A comment about this notebook:  trying to Knit does not make much sense, run one chunck at a time, and observe.  
+
+
+# Parsing Content From Wikipedia
+
+In this notebook, we are going to parse some data from wikipedia.  Some of it was simple, and other elements were tricky.  For simple, I used `rvest`.  For not-so-simple, I used `xml2` which `rvest` is built upon.  And for the really tricky ones, I used my past experience.  For small datasets, these `R` approaches are fine, but if you want to do some serious data harvesting and parsing, you should use the C-based language that is the fastest in the world at parsing.  That would not be `R`. 
+
+**War story rant** ... I have probably downloaded over 15 million pages over the last 10 years or so.  That is direct downloads, you parallel-process and you don't over-slurp, you do not want to be a DDOS attack.  I also have downloaded large tar.gz time files and processed them.  Of interest to some of you may be the OCR project we did with older patents, such as Abraham Lincoln's 6469 patent.  We used `tesseract` to OCR over 100 million patent pages and do cleanup procedures on old ones.  At the time, our quality was better than Google patents (e.g., 2014-ish).  Likely, it still may be today.  If you care about clean data, then you make efforts to clean the data.  You can see a few YouTube videos on how to train `tesseract` to be smarter.  It doesn't work.  We need a new engine.  A better engine.  A grid-approach engine that could use modern-GPUs.  Our Phase I proposal was a bit of money, but we did not receive funding in Phase II to make that new grid-approach engine a reality.  Not the end of the world, but I will stop with my sidebar...
+
+From Wikipedia, we are going to grab some basic data from a page, if it exists; otherwise, we will return (NA).  Good data provenance is about keeping a "chain of custody" with your process.  So at times, I could go back and change a previous `for-loop` but it makes it more difficult to review later.  I call this the "sweeping" approach.  Do one sweep at a time, keep them independent.  You may have to rewind to a certain "sweep" stage, but that is fine.  Each stage should have an objective.
+
+* Download and Cache the webpage.  Simple enough objective and essential for good data provenance.  I can still use `rvest` but I will develop my own caching mechanisms.
+
+* Parsing strategies.  Again, cache anything that has already been parsed.  The next time, it just grabs the result and moves own.  If you code in a "parallel" form, you are copying/pasting code blocks and making minimal changes.  Some believe there is a "perfect abstract" solution.  Maybe there is, but I can get to work and use "git r done" and have millions of pages downloaded and parsed before you finish your perfect "abstraction" solution.
+
+* `Latitude/Longitude`: If the webpage has this, it will grab the first instance.  On most city/state pages, that is the correct form.  Some UTF-8 issues will arise, I tried to pass `https://en.wikipedia.org/wiki/Ober%C3%A1` into the system, and it failed miserably, as in crashing both RGui and RStudio a few days ago.  Tools->Global Options->Code->Saving ... select UTF-8 ... I had written a function to deal with the latitude/longitude degree symbols an it created havoc.  Even on github.  The `a grave` in `Ober%C3%A1` was not friendly.  I have also noticed that if I choose UTF-8 to save data files in ".rds" format, the file compression gain is now a loss.  So it is something to be aware of, and I will probably ignore encoding="UTF-8" unless it really mattes.
+
+* `Tables` in general: I look for all tables, then do a wildcard search on the content looking for a known unique data element (e.g., "`*Climate Data`").
+
+* `Climate Data`: This is a common table that has temperature, precipitation, and for some locations, so much more (e.g., compare `Whitefish, Montana` to `Manhattan` [New York]).  I could have grabbed just the top-half of each row, but in this "sweep" I am already coding, so I have this inclination to get all the relevant data.  `units=1` is the top value and `units=2` is the bottom value, if it exists.
+
+* `Historic Population`: This is decade-level census data (every 10 years) with some surprise bonus data.  This is a vertically-formatted table and the basic `rvest::html_tabl` fails spectacularly.  After trying to use their tools, I just did the "hold my rootbeer" thing and did it my own way.
+
+* `State Capitals`:  I will demonstrate a few pages, one-offs, where you have to know the URL of Wikipedia to make it happen.  Then I parse <https://en.wikipedia.org/wiki/List_of_capitals_in_the_United_States#State_capitals> which `rvest` handles nicely, so there is little for me to do.  Since each state capital probably has a history elsewhere on the page, I had to use a unique wildcard search to guarantee the result ... 
+
+`my.table = wiki.findMyTable(tables,"*2716.7*");  # Alaska area should be unique`
+
+
+```{r, chunck-load-libraries-functions}
+library(devtools);
+library(humanVerseWSU);
+packageVersion("humanVerseWSU");  # should be ‘0.1.4’+
+
+# how long after commit/push before "raw" becomes live?
+# unraw was immediate ...  3:50 AM ... about 7 minutes https://github.com/MonteShaffer/humanVerseWSU/blob/master/humanVerseWSU/R/functions-cleanup.R
+# sometimes it is immediate ...
+
+path.github = "https://raw.githubusercontent.com/MonteShaffer/humanVerseWSU/master/";
+
+# a few DMS <--> DEC conversion tools for lat/long ... in the end, I didn't need them ...
+# source("C:/_git_/MonteShaffer/humanVerseWSU/humanVerseWSU/R/functions-maths.R");
+## I reorganized the `grabHTML` function that is the key driver of the caching system ... It is not compiled yet, so grab it from its source_url
+source_url( paste0(path.github, "humanVerseWSU/R/functions-file.R") );
+
+## I may never directly wrap them into the library ... harvesting/parsing are tasks/processes that need to be performed and documented, that does not mean they belong as "public functions" in the library 
+source_url( paste0(path.github, "humanVerseWSU/R/functions-wikipedia.R") );
+
+# UTF encoding issues ... notice the degree symbol, the single quote that is not really, and the double-quote that is not really...
+# wiki.cleanupDMStoDecLatitudeLongitude("48°22′13″N 114°11′20″W");
+# the above function can be found in humanVerseWSU/compiling/_stuff_/ just as an archive ...
+
+```
+
+# Local Data Storage
+
+We need a location to store our data (page.html).  I will create folder name, based on the wiki-page name.  I have a way to convert `back-and-forth` if necessary, see: `wiki.parseWikiPageToString` and `wiki.parseWikiStringBackToPage`.  Files that will currently be stored in the folder, see your version of `R:\Wikipedia\en^wikipedia^org-wiki-Atlanta\`
+
+* `page.html` is the raw.html file
+* `coordinates.txt` contains latitude/longitude
+* `climate.html` and `climate.rds` and temporary in-between file to allow `xml2::` to play nice with my custom code
+* `population.txt` contains the historical population data
+
+
+```{r, chunck-prep-data-storage}
+
+local.data.path = "R:/";  # to store HTML files, cached data-objects
+      # I generally use large drives because they fill up
+      # Having the C:/ run out can be bad 
+      # Today's project [~6MB zipped]
+path.wiki = paste0(local.data.path,"Wikipedia/");
+createDirRecursive(path.wiki);
+
+```
+
+You can read the functions if you would like, but let's try out my hometown `Columbia Falls, Montana` ...
+
+## Download the file
+
+```{r, chunck-first-example-download}
+
+wiki.url = "https://en.wikipedia.org/wiki/Columbia_Falls,_Montana";
+
+wiki.info = wiki.downloadWikiPage(wiki.url, path.wiki);
+    str(wiki.info);
+
+# check your folder and make certain 'page.html' lives in the expected folder
+
+```
+## Let's do some parsing
+
+```{r, chunck-first-example-parser}
+
+latlong = wiki.findCoordinates(wiki.info$path.wiki.page, wiki.info$wiki.html); 
+    latlong;
+population = wiki.historicalPopulation(wiki.info$path.wiki.page, wiki.info$wiki.html);
+    population;
+climate = wiki.parseAverageClimate(wiki.info$path.wiki.page, wiki.info$wiki.html);
+  str(climate);  # doesn't exist ...
+
+```
+Check out `coordinates.txt` and `population.txt` ... there is not any `climate-data` because the page doesn't have it.
+
+## Another place nearby Whitefish, Montana
+
+I was technically born in the `Whitefish hospital`, so let's do that one next.  It has climate data.
+
+
+```{r, chunck-example-Whitefish}
+
+wiki.url = "https://en.wikipedia.org/wiki/Whitefish,_Montana";
+
+wiki.info = wiki.downloadWikiPage(wiki.url, path.wiki);
+    str(wiki.info);
+
+latlong = wiki.findCoordinates(wiki.info$path.wiki.page, wiki.info$wiki.html); 
+    latlong;
+population = wiki.historicalPopulation(wiki.info$path.wiki.page, wiki.info$wiki.html);
+    population;
+climate = wiki.parseAverageClimate(wiki.info$path.wiki.page, wiki.info$wiki.html);
+  str(climate);  
+
+
+```
+## Wenatchee, Washington
+
+The climate data is similar, but the data frame is not exactly the same size.
+
+```{r, chunck-example-Wenatchee}
+
+wiki.url = "https://en.wikipedia.org/wiki/Wenatchee,_Washington";
+
+wiki.info = wiki.downloadWikiPage(wiki.url, path.wiki);
+    str(wiki.info);
+
+latlong = wiki.findCoordinates(wiki.info$path.wiki.page, wiki.info$wiki.html); 
+    latlong;
+population = wiki.historicalPopulation(wiki.info$path.wiki.page, wiki.info$wiki.html);
+    population;
+climate = wiki.parseAverageClimate(wiki.info$path.wiki.page, wiki.info$wiki.html);
+  str(climate);  
+
+
+```
+
+## Manhattan (New York)
+
+There are lot's more data.  Notice how much faster the chuck runs a second time.  That is, run it once, then again.
+
+You may also notice some random warnings.  We had some file-connections open that timed out.  Nothing to worry about, but a sign that the coding could be better.
+
+```{r, chunck-example-Manhattan}
+
+wiki.url = "https://en.wikipedia.org/wiki/Wenatchee,_Washington";
+
+wiki.info = wiki.downloadWikiPage(wiki.url, path.wiki);
+    str(wiki.info);
+
+latlong = wiki.findCoordinates(wiki.info$path.wiki.page, wiki.info$wiki.html); 
+    latlong;
+population = wiki.historicalPopulation(wiki.info$path.wiki.page, wiki.info$wiki.html);
+    population;
+climate = wiki.parseAverageClimate(wiki.info$path.wiki.page, wiki.info$wiki.html);
+  str(climate);  
+
+
+```
+# State Capitals
+
+So having to copy/paste Wikipedia pages is less work, but that can also be improved upon.  This technique took me about an hour to program.  For me individually, that may have been the same time to copy/paste.  But I learned some things that would make this table parsing easy.  In fact, `rvest` grabbed the table with no problems, I just had to grab the links, match them up and I was good to go, see function `wiki.parseStateCapitalsOfAmerica`.
+
+<https://en.wikipedia.org/wiki/List_of_capitals_in_the_United_States#State_capitals>
+
+
+## Sweep 1: Get the capitals and urls
+
+```{r, chunck-state-capitals}
+
+wiki.url = "https://en.wikipedia.org/wiki/List_of_capitals_in_the_United_States#State_capitals";
+
+wiki.info = wiki.downloadWikiPage(wiki.url, path.wiki);
+    str(wiki.info);
+
+#############  SWEEP #1 ... get the capitals in their table 
+capitals = wiki.parseStateCapitalsOfAmerica(wiki.info$path.wiki.page, wiki.info$wiki.html); 
+    capitals;
+str(capitals);
+
+# the data is not fully clean, but good to go, for a for loop to harvest the pages for the 50 capitals, the capitals$url was constructed ... from the table ...
+
+# row headers are an issue in the dataframe, I went back and changed in function...  A newline (\r\n} breaks the pipe-delimited | header ...
+
+```
+You will notice Denver <https://en.wikipedia.org/wiki/Denver> has an odd formatting from a traditional one such as Juneau <https://en.wikipedia.org/wiki/Juneau,_Alaska>.  It doesn't matter, I grabbed the URLs from the table, and can proceed.
+
+I have a bonus dataframe that I will save.  I will append latitude/longitude to this dataframe `capitals`.
+
+## Sweep 2: Download Files and Do Primary Parsing `for-loop`
+
+In this stage, I intentionally PAUSE for 1 second to see what's going on.  Once you are confident, turn it off, and let it run.
+
+You need to have "data paranoia" ... am I doing that correct?  Is that data working?  Once you are confident in the functions, let the `for-loop` work for you.  
+
+Notice the code is not changing much.  A lot of copying/pasting and reusing code.  It is also a good idea to test one iteration of your for loop, and then run the whole thing: `state = 1;` has that purpose, comment it out when you are ready to do your full run.
+
+While running, I just notice the December `Dec` row, it appears to be changing, so I believe it is working as expected.  Have your `path.wiki` open and you can see the folder count growing.
+
+Printing this to the screen is probably making RStudio not be happy.  There are several lines of code you could comment out, after you tested `state = 1;` ... 
+
+```{r, chunck-state-for-loops}
+
+#############  SWEEP #2 ... for each capital, get latlong, population history, and climate data
+for(state in 1:50)
+  {
+  # state = 1;
+  my.state = capitals[state,];
+  wiki.url = my.state$url;
+  print("#################################################");
+  print(paste0( "####               ", my.state$Capital, ", ", my.state$State, "   ",state," of 50"));
+  print("#################################################");
+  Sys.sleep(1);  # comment here maybe
+  
+  wiki.info = wiki.downloadWikiPage(wiki.url, path.wiki); # I could comment this out, because I know it is cached, but it is useful to see ... always a good idea to run this line just to be sure ...
+    str(wiki.info); # comment here maybe
+
+latlong = wiki.findCoordinates(wiki.info$path.wiki.page, wiki.info$wiki.html); 
+    latlong; 
+population = wiki.historicalPopulation(wiki.info$path.wiki.page, wiki.info$wiki.html);
+    population; # comment here maybe
+climate = wiki.parseAverageClimate(wiki.info$path.wiki.page, wiki.info$wiki.html);
+  str(climate);  # comment here maybe
+  }
+
+
+
+
+```
+I commented a few lines, and re-ran, it just printed latitude, and is faster, because I am not pausing... 
+
+## Sweep 3: Merge the Dataframes
+
+I could try and compile the process into one `for-loop` but it makes it more difficult to come back and understand what I did in the future.  KISS principle.
+
+### Population Data Panel
+
+In this first pass, I can build a `population.panel` and collection all the `unique years` and harvest a larger `population.list` that I will use for the `population.df`.
+
+```{r, chunck-state-for-loops-population-1}
+# so we could build a panel ... I can build this into the main loop ...
+# State .. Capital .. Year .. Population 
+
+population.list = list();
+years = c(); # unique years
+population.panel = NULL;
+for(state in 1:50)
+  {
+  my.state = capitals[state,];
+  wiki.url = my.state$url;
+  print("#################################################");
+  print(paste0( "####               ", my.state$Capital, ", ", my.state$State, "   ",state," of 50"));
+  print("#################################################");
+  #Sys.sleep(1);
+  
+  wiki.info = wiki.downloadWikiPage(wiki.url, path.wiki);
+    str(wiki.info);
+
+  population = wiki.historicalPopulation(wiki.info$path.wiki.page, wiki.info$wiki.html);
+  
+  population$state = my.state$State;
+  population$capital = my.state$Capital;
+  
+  population.panel = rbind(population.panel, population);
+  
+  years = c(years, population$year);
+  years = unique(years);
+   
+  population.list[[state]] = population;
+  }
+
+str(population.panel);
+population.panel;
+
+```
+### Population Data Frame
+
+With unique `years` I can build a dataframe with 50 rows for the 50 states.  The columns will have the years.
+
+```{r, chunck-state-for-loops-population-2}
+
+# or a full dataframe with lots of columns
+# State .. Capital .. Year.1708 .. Year.2019
+
+
+years = sort(years); years;
+str(population.list[[1]]);
+
+
+population.df = as.data.frame( matrix(NA,nrow=50,ncol=2+length(years) ), row.names=NULL );
+  colnames(population.df) = c("state","capital", paste0("y.",years) );
+str(population.df);
+
+##############  not efficient, but let's fill every row and cell with data
+for(state in 1:50)
+  {
+  # for testing within a loop
+  # state = 1;
+  my.state = capitals[state,];
+  wiki.url = my.state$url;
+  print("#################################################");
+  print(paste0( "####               ", my.state$Capital, ", ", my.state$State, "   ",state," of 50"));
+  print("#################################################");
+  #Sys.sleep(1);
+  
+  population = population.list[[state]];
+  
+  population.df[state,1] = my.state$State;
+  population.df[state,2] = my.state$Capital;
+  
+  my.years = population$year;
+  i = 0;
+  for(my.year in my.years)
+    {
+    i = 1 + i;
+    # my.year = my.years[1];  # test the logic on one row, then run the loop ...
+    idx = which(years==my.year);
+    population.df[state,2+idx] = population$population[i];
+    }
+  }
+
+population.df;
+
+```
+### Add Latitude/Longitude to capitals
+
+I will loop again, grab `lats`/`longs`, and store them.  They are the same size as the capitals dataframe, so I will append them.
+
+```{r, chunck-state-for-loops-capitals}
+
+
+lats = c();
+longs = c();
+for(state in 1:50)
+  {
+  # state = 1;
+  my.state = capitals[state,];
+  wiki.url = my.state$url;
+  print("#################################################");
+  print(paste0( "####               ", my.state$Capital, ", ", my.state$State, "   ",state," of 50"));
+  print("#################################################");
+  #Sys.sleep(1);
+  
+  wiki.info = wiki.downloadWikiPage(wiki.url, path.wiki);
+    str(wiki.info);
+
+  latlong = wiki.findCoordinates(wiki.info$path.wiki.page, wiki.info$wiki.html); 
+    latlong;
+  
+  lats = c(lats, latlong[1]);
+  longs = c(longs, latlong[2]);
+  }
+# check lengths
+
+capitals$latitude = lats;
+capitals$longitude = longs;
+capitals;
+
+```
+### Climate Data Panel
+
+Parallel coding makes it easy to `git r done` without a lot of high-level thing... 
+
+```{r, chunck-state-for-loops-climate}
+
+climate.panel = NULL;
+for(state in 1:50)
+  {
+  #state = 1;
+  my.state = capitals[state,];
+  wiki.url = my.state$url;
+  print("#################################################");
+  print(paste0( "####               ", my.state$Capital, ", ", my.state$State, "   ",state," of 50"));
+  print("#################################################");
+  #Sys.sleep(1);
+  
+  wiki.info = wiki.downloadWikiPage(wiki.url, path.wiki);
+    str(wiki.info);
+
+  climate = wiki.parseAverageClimate(wiki.info$path.wiki.page, wiki.info$wiki.html);
+  
+  climate$df$state = my.state$State;
+  climate$df$capital = my.state$Capital;
+  
+  climate.panel = rbind(climate.panel, climate$df);
+  }
+
+## Units and Keys are backward, but so what ... we have functions to address that 
+
+
+
+str(climate.panel);
+climate.panel;   # 2:56 PM ... 5 minutes of coding ... parallel logic is your friend ..
+
+```
+
+## Sweep 4: Update Data Types and Save
+
+```{r, chunck-state-save-path}
+
+path.wiki = paste0(local.data.path,"data/state-capitals/");
+createDirRecursive(path.wiki);
+
+```
+
+### Dataframe `capitals`
+
+```{r, chunck-state-save-capitals}
+
+str(capitals);  # have some "strings" that should be numbers ...
+
+capitals$`Capital Since` = as.numeric(capitals$`Capital Since`);  # RStudio auto-complete is nice here
+capitals$`Area (mi2)` = as.numeric(capitals$`Area (mi2)`);
+capitals$`Rank in State  (city proper)` = as.numeric(capitals$`Rank in State  (city proper)`);
+
+str(capitals);
+
+capitals$`Population (2019 est.)` = wiki.cleanupNumericVectors(capitals$`Population (2019 est.)`);
+capitals$`MSA/µSA Population  (2019 est.)` = wiki.cleanupNumericVectors(capitals$`MSA/µSA Population  (2019 est.)`);
+capitals$`CSA Population  (2019 est.)` = wiki.cleanupNumericVectors(capitals$`CSA Population  (2019 est.)`);
+
+str(capitals);
+
+
+#######################
+
+
+
+# not a lot of rework above (we have cached our data), but still ...
+str(capitals);
+copy.capitals = capitals;  
+
+copy.capitals = moveColumnsInDataFrame(copy.capitals,c("latitude","longitude"),"after","Capital");
+str(copy.capitals);  ## maybe make State and Capital factors
+
+encoding="UTF-8"; # best format for allowing special characters / international characters ...
+  ## use this sparingly, when necessary, it takes up space ...
+
+myfile = paste0(path.wiki,"state-capitals.txt");
+    utils::write.table( copy.capitals , file(myfile, encoding=encoding), quote=FALSE, col.names=TRUE, row.names=FALSE, sep="|");  # [6KB]
+    #copy.capitals = utils::read.csv(myfile, fileEncoding=encoding, header=TRUE, quote="", sep="|"); # this is the reverse 
+myfile = gsub(".txt",".rds",myfile);    
+    saveRDS( copy.capitals , file(myfile, encoding=encoding) ); # this is a compressed R format ... adding the UTF part makes it large [8KB] ... this would be smaller 
+    # saveRDS( copy.capitals , myfile ); [4KB]
+    #copy.capitals = readRDS(file(myfile, encoding=encoding)); # this is the reverse 
+
+## with capitals, I intentionally left "State" and "Capital" ... not "state" and "capital" ... it will require some care "merging" notation, but is a useful exercise in having care reading your data fields ...
+
+
+
+```
+### Panel `climate`
+
+```{r, chunck-state-save-climate}
+
+
+#######################
+str(climate.panel);
+copy.climate.panel = climate.panel;  
+
+
+copy.climate.panel = moveColumnsInDataFrame(copy.climate.panel,c("state","capital"),"before","units");
+str(copy.climate.panel);   # https://en.wikipedia.org/wiki/Olympia,_Washington#Geography_and_climate
+# units is the top/bottom row of the data-field ... normally the top is F as in Fahrenheit)
+# but for some it is "inches" vs.. mm .... At the data-collection layer, I didn't care, just grab the data and label unit=1 is top, unit=2 is bottom
+# The degree symbol got me going down the UTF-8 path ... it can crash R ... One line of code can make Rgui and RStudio lock up ... cool and not cool ...
+
+
+myfile = paste0(path.wiki,"state-capitals-climatedata.txt");
+    utils::write.table( copy.climate.panel , file(myfile, encoding=encoding), quote=FALSE, col.names=TRUE, row.names=FALSE, sep="|");  # [94KB]
+    #copy.climate.panel = utils::read.csv(myfile, fileEncoding=encoding, header=TRUE, quote="", sep="|"); # this is the reverse 
+myfile = gsub(".txt",".rds",myfile);    
+    saveRDS( copy.climate.panel , file(myfile, encoding=encoding) ); # this is a compressed R format ... adding the UTF part makes it large [169KB] ... this would be smaller 
+    # saveRDS( copy.climate.panel , myfile ); [26KB]  ... learning something here ... UTF and RDS don't play nice ... RDS is normally about 5-6x smaller than TXT (with larger files)
+    #copy.climate.panel = readRDS(file(myfile, encoding=encoding)); # this is the reverse 
+
+
+
+
+```
+
+
+### Data for `population`
+
+```{r, chunck-state-save-population}
+
+
+str(population.df);
+
+
+myfile = paste0(path.wiki,"state-capitals-population-df.txt");
+    utils::write.table( population.df , file(myfile, encoding=encoding), quote=FALSE, col.names=TRUE, row.names=FALSE, sep="|");  # [9KB]
+    #population.df = utils::read.csv(myfile, fileEncoding=encoding, header=TRUE, quote="", sep="|"); # this is the reverse 
+myfile = gsub(".txt",".rds",myfile);    
+    saveRDS( population.df , file(myfile, encoding=encoding) ); # this is a compressed R format ... adding the UTF part makes it large [10KB] ... this would be smaller 
+    # saveRDS( population.df , myfile ); [4KB]  ... learning something here ... UTF and RDS don't play nice ... RDS is normally about 5-6x smaller than TXT (with larger files)
+    #population.df = readRDS(file(myfile, encoding=encoding)); # this is the reverse 
+
+
+
+## population.panel
+## population.df
+
+
+str(population.panel);
+copy.population.panel = population.panel;  
+
+
+copy.population.panel = moveColumnsInDataFrame(copy.population.panel,c("state","capital"),"before","year");
+str(copy.population.panel); 
+
+
+
+myfile = paste0(path.wiki,"state-capitals-population-panel.txt");
+    utils::write.table( copy.population.panel , file(myfile, encoding=encoding), quote=FALSE, col.names=TRUE, row.names=FALSE, sep="|");  # [28KB]
+    #copy.population.panel = utils::read.csv(myfile, fileEncoding=encoding, header=TRUE, quote="", sep="|"); # this is the reverse 
+myfile = gsub(".txt",".rds",myfile);    
+    saveRDS( copy.population.panel , file(myfile, encoding=encoding) ); # this is a compressed R format ... adding the UTF part makes it large [37KB] ... this would be smaller 
+    # saveRDS( copy.population.panel , myfile ); [5KB]  ... learning something here ... UTF and RDS don't play nice ... RDS is normally about 5-6x smaller than TXT (with larger files)
+    #population.df = readRDS(file(myfile, encoding=encoding)); # this is the reverse 
+
+
+
+
+
+```
+
+# Conclusion
+
+The UTF-8 encoding issue was a concern, so I programmed in this domain a bit this week.  In the end, saving with encoding makes "RDS" not compress.
+
+```{r, chunck-state-save-final}
+
+path.wiki = paste0(local.data.path,"data/state-capitals/final/");
+createDirRecursive(path.wiki);
+
+#################  state-capitals as capitals   ################# 
+myfile = paste0(path.wiki,"state-capitals.txt");
+    utils::write.table( copy.capitals , myfile, quote=FALSE, col.names=TRUE, row.names=FALSE, sep="|");
+
+myfile = gsub(".txt",".rds",myfile);    
+    saveRDS( copy.capitals , myfile ); 
+
+
+#################  climate data  ################# 
+
+myfile = paste0(path.wiki,"state-capitals-climatedata.txt");
+    utils::write.table( copy.climate.panel , myfile, quote=FALSE, col.names=TRUE, row.names=FALSE, sep="|");
+
+myfile = gsub(".txt",".rds",myfile);    
+    saveRDS( copy.climate.panel , myfile );
+
+
+#################  population.df  ################# 
+
+
+myfile = paste0(path.wiki,"state-capitals-population-df.txt");
+    utils::write.table( population.df , myfile, quote=FALSE, col.names=TRUE, row.names=FALSE, sep="|");
+
+myfile = gsub(".txt",".rds",myfile);    
+    saveRDS( population.df , myfile );
+
+
+#################  population.panel  ################# 
+
+
+myfile = paste0(path.wiki,"state-capitals-population-panel.txt");
+    utils::write.table( copy.population.panel , myfile, quote=FALSE, col.names=TRUE, row.names=FALSE, sep="|");
+
+myfile = gsub(".txt",".rds",myfile);    
+    saveRDS( copy.population.panel , myfile );
+
+
+
+```
+
+These final files are compressed a bit `.rds` but not as much as really large files compress.  We now have a final data set.
+
+I need to emphasize that I utilize `write.table` and `read.csv` to transfer data back and forth.  The pipe `|` delimiter makes the text files easy to read (almost like columns, especially if each field is about the same size).
+
+Similarly `saveRDS` and `readRDS` for binary forms.  When I have a list, at times I need to save my sub-elements in this form.  I prefer ".txt" because I can easily review what is going on in File Explorer.  But at times it makes sense.
+
