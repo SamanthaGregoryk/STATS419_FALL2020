@@ -14,3 +14,17 @@ mergeDF <- function(df1, df2){
   merge(df1, df2, by = "nmid")
 }
 
+# for correlation table
+forCorrelation <- function(mtx){
+  nrow = nrow(mtx);
+  ncol = ncol(mtx);
+  
+  myCorr = rcorr(mtx);
+  myM = colMeans(mtx, na.rm=TRUE);
+  mySD = c();
+  
+  for(i in 1:ncol) {
+    mySD = c(mySD, sd(mtx[,i], na.rm=TRUE));
+  }
+}
+
