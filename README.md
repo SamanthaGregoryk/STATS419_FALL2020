@@ -1,2 +1,2 @@
 # WSU_STATS419_FALL2020
-WSU STATS 419 
+Introduction to Multivariate Statistics
